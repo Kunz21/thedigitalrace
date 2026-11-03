@@ -9,12 +9,11 @@ export const SUBTITLE = 'The Virtual Race';
 // Getränke
 export const SHOT = 'Adios Motherfucker';
 export const COCKTAILS = ['Espresso Martini', 'Basil Smash'];
-export const ALC_FREE_SHOT = 'Ingwer-Shot (alkoholfrei) 🫚';
 
 // ------------------------------------------------------------
 //  RUNDE 1 – SCHÄTZMEISTER
 //  q = Frage, a = Lösung (Zahl), u = Einheit, n = Hinweis bei der Auflösung
-//  Pro Spiel werden 3 Fragen zufällig gezogen.
+//  Pro Spiel werden 8 Fragen zufällig gezogen.
 //  Die Werte sind Richtwerte aus Studien bzw. gängigen Angaben.
 // ------------------------------------------------------------
 export const SCHAETZ = [
@@ -23,21 +22,38 @@ export const SCHAETZ = [
   { q: 'Wie lang ist ein erigierter Penis im weltweiten Durchschnitt?', a: 13.1, u: 'cm', n: 'Auswertung von über 15\'000 Messungen (2015). Lineal wieder einpacken.' },
   { q: 'Wie viele Millionen Spermien enthält ein durchschnittlicher Samenerguss?', a: 255, u: 'Millionen', n: 'Richtwert der WHO-Referenzwerte. Und trotzdem fragt keiner nach dem Weg.' },
   { q: 'Wie viele Kalorien hat ein durchschnittlicher Samenerguss?', a: 6, u: 'kcal', n: 'Gängige Angabe: etwa 5 bis 7 kcal. Diät-tauglich.' },
-  { q: 'Wie oft pupst ein Mensch durchschnittlich pro Tag?', a: 15, u: 'Mal', n: 'Gängige Angabe: rund 14 bis 23 Mal. Heute Abend vermutlich mehr.' },
-  { q: 'Wie viele Milliarden Besuche zählte Pornhub im Jahr 2019?', a: 42, u: 'Milliarden', n: 'Laut Pornhubs eigenem Jahresrückblick 2019.' },
+  { q: 'Wie viele Spermien produziert ein Mann pro Sekunde?', a: 1500, u: 'Spermien', n: 'Gängige Angabe: rund 1500 pro Sekunde. Während dieser Frage also ein paar Tausend.' },
+  { q: 'Wie viele Spermien braucht es, um eine Eizelle zu befruchten?', a: 1, u: 'Spermium', n: 'Genau eins. Die anderen 254 Millionen sind Statisten.' },
+  { q: 'Wie viele Nervenenden hat die Klitoris?', a: 10000, u: 'Nervenenden', n: 'Studie von 2022: rund 10\'000. Früher hiess es 8\'000. Die meisten Männer finden trotzdem keine.' },
+  { q: 'Wie oft am Tag denkt ein Mann laut einer Studie an Sex?', a: 19, u: 'Mal', n: 'Ohio State University (2011): im Schnitt rund 19 Mal. Heute Abend deutlich öfter.' },
+  { q: 'Wie hoch steigt der Puls beim Orgasmus ungefähr?', a: 140, u: 'Schläge/Min.', n: 'Richtwert: etwa 110 bis 180. Also wie beim Penaltyschiessen.' },
+  { q: 'Wie oft paart sich ein Löwe in der Paarungszeit pro Tag?', a: 40, u: 'Mal', n: 'Gängige Angabe: 20 bis 50 Mal pro Tag – mehrere Tage am Stück. König der Tiere eben.' },
+  { q: 'Wie viele Penisse hat eine Schlange?', a: 2, u: 'Stück', n: 'Zwei (Hemipenis). Und benutzt trotzdem nur einen aufs Mal.' },
   { q: 'Wie viele Minuten dauert der Orgasmus eines Schweins?', a: 30, u: 'Minuten', n: 'Gängige Angabe: bis zu 30 Minuten. Respekt, Kollege.' },
   { q: 'Wie lang ist der Penis eines Blauwals?', a: 2.5, u: 'Meter', n: 'Schätzungen liegen bei rund 2,4 bis 3 Metern.' },
+  { q: 'Wie viele Zitzen hat eine Kuh?', a: 4, u: 'Zitzen', n: 'Vier. Wer «zwei» gesagt hat, war noch nie auf einem Bauernhof.' },
+  { q: 'Wie lang ist die Zunge einer Giraffe?', a: 50, u: 'cm', n: 'Rund 45 bis 50 cm. Kein Kommentar.' },
+  { q: 'Wie viele Male pupst ein Mensch durchschnittlich pro Tag?', a: 15, u: 'Mal', n: 'Gängige Angabe: rund 14 bis 23 Mal. Heute Abend vermutlich mehr.' },
+  { q: 'Wie viele Milliarden Besuche zählte Pornhub im Jahr 2019?', a: 42, u: 'Milliarden', n: 'Laut Pornhubs eigenem Jahresrückblick 2019.' },
   { q: 'Wie viele Tausend Kondome wurden im Olympischen Dorf in Paris 2024 verteilt?', a: 300, u: 'Tausend', n: 'Rund 300\'000 Stück für etwa 14\'000 Athletinnen und Athleten.' },
+  { q: 'Wie viele Jahre alt sind die ältesten gefundenen Kondome ungefähr?', a: 380, u: 'Jahre', n: 'Gefunden im Dudley Castle in England, um 1640, aus Tierdarm. Mehrweg!' },
   { q: 'Wie viele Gramm wiegt ein menschlicher Hoden ungefähr?', a: 20, u: 'Gramm', n: 'Richtwert: etwa 15 bis 25 Gramm pro Stück.' },
+  { q: 'Wie viele Kilo wiegt das Gehirn eines Mannes ungefähr?', a: 1.4, u: 'kg', n: 'Rund 1,4 kg. Genutzt wird heute Abend deutlich weniger.' },
   { q: 'Wie viele Liter Bier trinkt eine Person in der Schweiz pro Jahr im Schnitt?', a: 54, u: 'Liter', n: 'Richtwert der letzten Jahre: gut 50 Liter pro Kopf. Diese Runde hebt den Schnitt.' },
+  { q: 'Wie viele Kalorien hat ein Liter Lagerbier ungefähr?', a: 430, u: 'kcal', n: 'Rund 420 bis 450 kcal. Der Bauch kommt nicht vom Salat.' },
+  { q: 'Wie viele Millionen Mass Bier wurden am Oktoberfest 2023 getrunken?', a: 7, u: 'Millionen Mass', n: 'Rund 7 Millionen Mass. Ein guter Anfang.' },
   { q: 'Wie viele Tage ist eine Elefantenkuh schwanger?', a: 650, u: 'Tage', n: 'Rund 22 Monate. Und du jammerst über 9.' },
-  { q: 'Wie viele Liter Speichel produziert ein Mensch pro Tag?', a: 1, u: 'Liter', n: 'Etwa 0,5 bis 1,5 Liter – beim Anblick eines Espresso Martini mehr.' },
+  { q: 'Wie viele Tore erzielte Cristiano Ronaldo in der Champions League?', a: 140, u: 'Tore', n: '140 Tore – Rekord. Mehr Treffer als du je haben wirst.' },
+  { q: 'Wie viele Kilogramm wiegt der Champions-League-Pokal?', a: 7.5, u: 'kg', n: 'Rund 7,5 kg. Das schwerste, was manche heute hochkriegen.' },
+  { q: 'Wie hoch ist der Henkelpott?', a: 73.5, u: 'cm', n: '73,5 cm – also gut fünfmal so lang wie der Durchschnitt im Hosenbereich.' },
+  { q: 'Wie viele Millionen Euro bezahlte PSG 2017 für Neymar?', a: 222, u: 'Mio. Euro', n: '222 Millionen – bis heute Rekord. Dafür hat er viel gelegen.' },
+  { q: 'Wie viele Kilometer läuft ein Profi-Fussballer pro Spiel im Schnitt?', a: 11, u: 'km', n: 'Rund 10 bis 12 km. Ihr schafft heute knapp den Weg zur Bar.' },
 ];
 
 // ------------------------------------------------------------
 //  RUNDE 3 – BUZZER-CHAOS
 //  q = Frage, o = 4 Antworten, c = Index der richtigen Antwort (0–3)
-//  Pro Spiel werden 10 Fragen zufällig gezogen.
+//  Pro Spiel werden 15 Fragen zufällig gezogen.
 // ------------------------------------------------------------
 export const BUZZER = [
   { q: 'Welcher Klub hat die Königsklasse am häufigsten gewonnen?', o: ['AC Milan', 'Bayern München', 'Real Madrid', 'Liverpool'], c: 2 },
@@ -46,12 +62,19 @@ export const BUZZER = [
   { q: 'Wer gewann die Champions League 2025?', o: ['Paris Saint-Germain', 'Inter Mailand', 'Real Madrid', 'Arsenal'], c: 0 },
   { q: 'In welcher Stadt fand der Champions-League-Final 2025 statt?', o: ['London', 'Istanbul', 'München', 'Madrid'], c: 2 },
   { q: 'Wie heisst der Champions-League-Pokal im Volksmund?', o: ['Henkelpott', 'Silberkanne', 'Bierkrug', 'Goldene Kanne'], c: 0 },
+  { q: 'Welcher Klub holte 2005 das «Wunder von Istanbul»?', o: ['AC Milan', 'Liverpool', 'Chelsea', 'Juventus'], c: 1 },
+  { q: 'Welcher Trainer hat die Champions League am häufigsten gewonnen?', o: ['Pep Guardiola', 'Zinédine Zidane', 'Carlo Ancelotti', 'José Mourinho'], c: 2 },
+  { q: 'Aus welchem Land kommen die meisten Champions-League-Sieger?', o: ['England', 'Italien', 'Deutschland', 'Spanien'], c: 3 },
+  { q: 'Welcher Schweizer gewann die Champions League mit zwei verschiedenen Klubs?', o: ['Manuel Akanji', 'Xherdan Shaqiri', 'Granit Xhaka', 'Yann Sommer'], c: 1 },
   { q: 'Welcher Schweizer Klub spielte 2024/25 in der Champions-League-Ligaphase?', o: ['FC Basel', 'Young Boys', 'FC Zürich', 'Servette'], c: 1 },
   { q: 'Welche Spirituose gehört in einen Basil Smash?', o: ['Wodka', 'Rum', 'Gin', 'Tequila'], c: 2 },
   { q: 'Welche Spirituose gehört in einen klassischen Espresso Martini?', o: ['Wodka', 'Gin', 'Whisky', 'Grappa'], c: 0 },
   { q: 'Welche Farbe hat ein Adios Motherfucker?', o: ['Grün', 'Blau', 'Rot', 'Gelb'], c: 1 },
   { q: 'Wie viele verschiedene Spirituosen stecken klassisch in einem Adios Motherfucker?', o: ['3', '4', '5', '6'], c: 2 },
   { q: 'Aus welchem Land stammt Jägermeister?', o: ['Österreich', 'Deutschland', 'Schweiz', 'Tschechien'], c: 1 },
+  { q: 'Wie viel Volumenprozent hat Jägermeister?', o: ['25 %', '30 %', '35 %', '40 %'], c: 2 },
+  { q: 'Woraus wird Tequila gemacht?', o: ['Kaktus', 'Agave', 'Zuckerrohr', 'Mais'], c: 1 },
+  { q: 'Woraus wird Wodka traditionell gebrannt?', o: ['Getreide oder Kartoffeln', 'Trauben', 'Zuckerrohr', 'Agave'], c: 0 },
   { q: 'Welches Land hat den höchsten Bierkonsum pro Kopf der Welt?', o: ['Deutschland', 'Irland', 'Belgien', 'Tschechien'], c: 3 },
   { q: 'Was bedeutet «exen»?', o: ['Ein Glas in einem Zug leeren', 'Den Ex anrufen', 'Aus dem Spiel fliegen', 'Ein Glas zerbrechen'], c: 0 },
   { q: 'Welches Land wurde 2022 Fussball-Weltmeister?', o: ['Frankreich', 'Brasilien', 'Argentinien', 'Kroatien'], c: 2 },
@@ -59,24 +82,33 @@ export const BUZZER = [
   { q: 'Wie viele Minuten dauert eine Verlängerung im Fussball?', o: ['15', '20', '30', '45'], c: 2 },
   { q: 'Wie viele Spieler pro Team stehen beim Eishockey regulär auf dem Eis (inkl. Goalie)?', o: ['5', '6', '7', '11'], c: 1 },
   { q: 'Welches Tier hat im Verhältnis zur Körpergrösse den längsten Penis?', o: ['Elefant', 'Esel', 'Seepocke', 'Blauwal'], c: 2 },
+  { q: 'Welches Tier hat einen Penis mit kleinen Widerhaken?', o: ['Kater', 'Hund', 'Pferd', 'Delfin'], c: 0 },
   { q: 'Wofür wurde Viagra ursprünglich entwickelt?', o: ['Gegen Haarausfall', 'Gegen Herzbeschwerden', 'Gegen Kater', 'Gegen Höhenangst'], c: 1 },
   { q: 'Welchen Muskel trainiert man mit Kegelübungen?', o: ['Bizeps', 'Beckenboden', 'Wadenmuskel', 'Zwerchfell'], c: 1 },
+  { q: 'Woher hat der G-Punkt seinen Namen?', o: ['Vom Arzt Ernst Gräfenberg', 'Von «geil»', 'Von «Genital»', 'Von «Gold»'], c: 0 },
+  { q: 'Aus welchem Land stammt das Kamasutra?', o: ['China', 'Indien', 'Thailand', 'Ägypten'], c: 1 },
+  { q: 'Wie heisst das «Kuschelhormon», das beim Orgasmus ausgeschüttet wird?', o: ['Adrenalin', 'Insulin', 'Oxytocin', 'Cortisol'], c: 2 },
+  { q: 'Wie heisst die Angst vor Sex im Fachbegriff?', o: ['Arachnophobie', 'Genophobie', 'Klaustrophobie', 'Agoraphobie'], c: 1 },
+  { q: 'Welches Emoji steht im Chat für den Hintern?', o: ['🍒 Kirsche', '🍑 Pfirsich', '🍌 Banane', '🥥 Kokosnuss'], c: 1 },
+  { q: 'Welches Emoji steht im Chat für den Penis?', o: ['🥒 Gurke', '🌽 Mais', '🍆 Aubergine', '🥕 Karotte'], c: 2 },
+  { q: 'Was bedeutet die Abkürzung «MILF»?', o: ['Mother I\'d Like to F…', 'Most Important Lady Friend', 'Milk Is Lovely Food', 'Man In Love Forever'], c: 0 },
+  { q: 'Was ist der Adamsapfel?', o: ['Ein Teil des Kehlkopfs', 'Ein Muskel im Hals', 'Eine Drüse', 'Ein Knochen im Kiefer'], c: 0 },
   { q: 'Wie viele Herzen hat ein Oktopus?', o: ['1', '2', '3', '8'], c: 2 },
   { q: 'Was ist die Hauptstadt von Australien?', o: ['Sydney', 'Melbourne', 'Canberra', 'Perth'], c: 2 },
   { q: 'Wie viele Mitglieder hat der Schweizer Bundesrat?', o: ['5', '7', '9', '26'], c: 1 },
 ];
 
 // ------------------------------------------------------------
-//  RUNDE 4 – PANTOMIME-SPRINT
+//  RUNDE 4 – KRITZEL-SPRINT (Zeichnen & Raten)
 //  Kategorien können in der Lobby (Spielleiter) an/aus geschaltet werden.
 // ------------------------------------------------------------
-export const PANTO = [
-  { id: 'fussball', name: 'Champions League & Fussball', terms: ['Schwalbe im Strafraum', 'Elfmeter in die Wolken', 'Trikottausch', 'Rote Karte', 'Ronaldos Torjubel', 'Freistoss-Mauer (Hände vor dem Schritt)', 'Trainer tobt an der Seitenlinie', 'VAR-Check', 'Pokal stemmen', 'Spieler wälzt sich verletzt', 'Kopfballtor', 'Rudelbildung'] },
-  { id: 'maenner', name: 'Männernachmittag', terms: ['Grill anfeuern', 'Bierflasche mit Feuerzeug öffnen', 'IKEA-Schrank aufbauen', 'Fernbedienung suchen', 'Rasenmäher anwerfen', 'Einparken mit einer Hand', 'Bauch einziehen am Strand', 'Bierkiste schleppen', 'Schnarchen auf dem Sofa', 'Um 4 Uhr heimschleichen', 'Hantel-Selfie im Gym', 'Männerschnupfen'] },
-  { id: 'frech', name: 'Schlafzimmer (frech)', terms: ['BH mit einer Hand öffnen', 'Walk of Shame', 'Dirty-Dancing-Hebefigur', 'Striptease', 'Kondom im Portemonnaie suchen', 'Morgenlatte verstecken', 'Wasserbett', 'Handschellen', 'Massage mit Öl', 'Löffelchen', 'Sexy Feuerwehrmann', 'Von den Schwiegereltern erwischt'] },
-  { id: 'ausgang', name: 'Ausgang & Party', terms: ['Shot exen', 'Türsteher', 'Karaoke-Star', 'Taxi rufen um 4 Uhr', 'Tanzen wie Papa', 'Kater am Morgen', 'Bierpong-Wurf', 'Limbo', 'Polonaise', 'DJ', 'Kebab um 3 Uhr', 'Ex-Freundin anrufen'] },
-  { id: 'schweiz', name: 'Typisch Schweiz', terms: ['Jodeln', 'Fondue rühren', 'Kuh melken', 'Alphorn blasen', 'Skilift verpassen', 'Schwingen', 'Zug fährt pünktlich ab', 'Steinbock', 'Raclette schaben', 'Hornussen', 'Sackmesser', 'Schoggi essen'] },
-  { id: 'wintersport', name: 'Wintersport & Eishockey', terms: ['Bodycheck', 'Penalty', 'Zamboni fahren', 'Skispringen', 'Pirouette auf dem Eis', 'Curling wischen', 'Faustkampf mit Handschuhen', 'Langlauf', 'Snowboard-Sturz', 'Biathlon-Schiessen', 'Après-Ski', 'Goalie hält Puck mit dem Gesicht'] },
+export const ZEICHNEN = [
+  { id: 'fussball', name: 'Champions League & Fussball', terms: ['Henkelpott', 'Elfmeter', 'Rote Karte', 'Schwalbe', 'Trikottausch', 'Torjubel', 'Freistossmauer', 'Schiedsrichter', 'Eckfahne', 'Stadion', 'Kopfball', 'Abseits'] },
+  { id: 'maenner', name: 'Männernachmittag', terms: ['Grill', 'Bierbauch', 'Fernbedienung', 'Rasenmäher', 'Bierkiste', 'Sixpack', 'Werkzeugkasten', 'Hantel', 'Sofa', 'Bratwurst', 'Pickup', 'Bart'] },
+  { id: 'frech', name: 'Schlafzimmer (frech)', terms: ['Kondom', 'BH', 'Handschellen', 'Peitsche', 'Wasserbett', 'Stringtanga', 'Morgenlatte', 'Löffelchen', 'Striptease', 'Massageöl', 'Walk of Shame', 'Doppelbett'] },
+  { id: 'ausgang', name: 'Ausgang & Party', terms: ['Shot', 'Türsteher', 'Karaoke', 'Taxi', 'Kater', 'Bierpong', 'Discokugel', 'DJ', 'Kebab', 'Tequila', 'Polonaise', 'Strohhalm'] },
+  { id: 'schweiz', name: 'Typisch Schweiz', terms: ['Fondue', 'Kuh', 'Alphorn', 'Matterhorn', 'Skilift', 'Schwingen', 'Steinbock', 'Raclette', 'Sackmesser', 'Schoggi', 'Kuhglocke', 'Bergbahn'] },
+  { id: 'wintersport', name: 'Wintersport & Eishockey', terms: ['Puck', 'Eishockeyschläger', 'Zamboni', 'Skisprungschanze', 'Curlingstein', 'Snowboard', 'Schneemann', 'Goalie-Maske', 'Langlaufski', 'Après-Ski', 'Schlittschuh', 'Gondel'] },
 ];
 
 // ------------------------------------------------------------
@@ -87,6 +119,7 @@ export const BOMB = [
   'Biermarken', 'Fussballklubs aus Europa', 'Schweizer Kantone', 'Spirituosen', 'Stellungen im Bett',
   'Automarken', 'Champions-League-Sieger', 'Ausdrücke für Brüste', 'Cocktails', 'Schweizer Städte',
   'Körperteile', 'Ausreden fürs Zuspätkommen', 'Eishockey-Klubs', 'Dinge, die man im Bett macht', 'Fussballer mit R',
+  'Wörter für Penis', 'Orte für einen Quickie', 'Pornotitel mit Fussball', 'Anmachsprüche',
 ];
 
 // ------------------------------------------------------------
@@ -102,38 +135,96 @@ export const WHEEL = [
 ];
 
 // ------------------------------------------------------------
-//  FRECHE SPRÜCHE – {n} = Name, {p} = Platz, {d} = Anzahl Plätze
+//  FRECHE SPRÜCHE
+//  {n} = Name, {p} = Platz, {d} = Anzahl Plätze, {g} = Rater, {t} = Begriff
+//  Je mehr Sprüche pro Liste, desto mehr Abwechslung.
 // ------------------------------------------------------------
 export const SAY = {
   leader: [
-    '{n} marschiert durch wie Real Madrid im April.',
-    '{n} poliert schon mal den Henkelpott.',
-    '{n} spielt in einer eigenen Liga.',
-    'Alle jagen {n}. Zeit für ein taktisches Foul?',
-    '{n} grinst wie einer, der doppelte Melonen 🍈🍈 gesehen hat.',
+    '{n} ist oben – wie immer, wenn das Licht ausgeht.',
+    '{n} führt. Das erste Mal heute, dass er vorne ankommt.',
+    '{n} hat die Tabelle fester im Griff als sich selbst um 2 Uhr nachts.',
+    '{n} steht oben wie eine Morgenlatte: unerwartet und ziemlich arrogant.',
+    'Alle wollen {n} von hinten nehmen – zumindest in der Tabelle.',
+    '{n} besorgt\'s gerade allen. Und keiner kann sich wehren.',
+    '{n} führt so souverän, als hätte er heute schon zweimal gewonnen.',
+    '{n} macht\'s wie im Bett: kurz, aber er liegt oben.',
+    '{n} ist Leader. Der Rest schaut zu wie bei einem schlechten Porno.',
+    '{n} spielt in einer eigenen Liga – die Kreisliga ist für euch.',
   ],
   last: [
-    'Vom Sofa direkt auf Platz {p}: {n}.',
-    '{n} spielt Champions League – die der Kreisliga.',
-    'Rote Laterne für {n}. Licht an, Hirn aus.',
-    '{n}: Abstiegskampf mit Ansage.',
-    '{n} trifft heute nur die Bar.',
+    '{n} auf Platz {p}: So schlaff war heute Abend noch nichts.',
+    '{n}: viel Vorspiel, null Abschluss.',
+    '{n} spielt wie ein Kondom aus dem Bahnhofsautomaten: sieht gut aus, versagt im Ernstfall.',
+    '{n} ist unten. Zum Glück steht er drauf.',
+    '{n} braucht ein blaues Pillchen – fürs Hirn.',
+    'Rote Laterne für {n}. Passt zum Rotlicht, wo er sonst rumhängt.',
+    '{n}: Zu früh gekommen, zu spät reagiert.',
+    '{n} auf Platz {p} – selbst seine Ex hatte mehr Ausdauer mit ihm.',
+    '{n} liegt ganz unten. Hat er offenbar so gelernt.',
+    '{n} ist so weit hinten, dass er schon wieder von vorne kommt.',
   ],
   climb: [
-    '{n} schiesst {d} Plätze nach vorne – Dopingkontrolle!',
-    '{n} macht {d} Plätze gut. Wer hat dem was ins Glas getan?',
+    '{n} schiesst {d} Plätze hoch – so schnell ist er sonst nur aus der Hose.',
+    '{n} macht {d} Plätze gut. Hat ihm jemand Viagra ins Bier gekippt?',
+    '{n} klettert {d} Plätze – endlich kriegt er mal einen hoch.',
+    '+{d} für {n}. Plötzlich hart im Nehmen.',
+    '{n} stösst {d} Plätze vor. Rhythmus gefunden.',
   ],
   fall: [
-    '{n} stürzt {d} Plätze ab wie ein Stürmer im Strafraum.',
-    '{n} verliert {d} Plätze – Transferliste.',
+    '{n} rutscht {d} Plätze ab – schneller schlaff als gedacht.',
+    '{n} verliert {d} Plätze. Erst gross angeben, dann nichts bringen.',
+    '{n} fällt {d} Plätze – wie seine Hose beim zweiten Date.',
+    '−{d} für {n}. Kurz gestanden, schnell gefallen.',
+    '{n} stürzt {d} Plätze ab. Die Luft ist raus – wie bei seinem Gummibaum.',
   ],
   roundWin: [
-    'Melonen-Moment 🍈🍈 für {n}!',
-    '{n} holt die Runde – Cocktail, bitte!',
-    'Gala-Auftritt von {n}.',
+    '{n} holt die Runde – endlich läuft bei ihm mal was.',
+    '{n} kommt als Erster. Ausnahmsweise mal etwas Positives.',
+    '{n} hat die Runde flachgelegt. Cocktail, bitte!',
+    '{n} gewinnt so dreckig, dass man danach duschen muss.',
+    '{n} macht den Abschluss – mit Happy End.',
+    '{n} triumphiert. Zieht euch warm an. Oder aus.',
+    '{n} hat allen gezeigt, wie man\'s richtig macht. Licht aus, Mund zu.',
+    '{n} hat heute mehr Glück als beim Tinder-Match mit Folgen.',
   ],
-  champion: '{n} ist Champion und stemmt den Henkelpott!',
-  loser: '{n} trägt die Rote Laterne nach Hause.',
+  boom: [
+    '{n} ist zu früh explodiert – kennt man ja von ihm.',
+    '{n} hatte das Ding zu lange in der Hand.',
+    'Bumm – und bei {n} ist schon wieder alles vorbei.',
+    '{n} konnte nicht rechtzeitig loslassen.',
+    '{n} wollte den Höhepunkt rauszögern. Hat nicht geklappt.',
+    '{n} geht hoch wie ein Teenager beim ersten Mal.',
+  ],
+  buzzWrong: [
+    '{n} drückt schneller als er denkt.',
+    '{n}: viel Druck, wenig Ahnung.',
+    '{n} war zu früh dran – Klassiker.',
+    '{n} hat zu früh abgedrückt.',
+    '{n}: Grosse Klappe, nichts dahinter.',
+  ],
+  drawHit: [
+    '{g} erkennt «{t}» sofort – so was hat er wohl öfter vor Augen.',
+    '{g} hat «{t}» erraten. Schmutzige Fantasie zahlt sich aus.',
+    '«{t}»! {g} weiss genau, wie das aussieht.',
+    '{g} errät «{t}». Kenner unter sich.',
+  ],
+  schaetzBest: [
+    '{n} schätzt am genausten – der misst wohl öfter nach.',
+    '{n} hat Augenmass. Übt wohl jeden Morgen vor dem Spiegel.',
+    '{n} liegt am nächsten dran. Erfahrungswert, vermutlich.',
+    'Volltreffer von {n}. Woher weiss der das so genau?',
+  ],
+  champion: [
+    '{n} ist Champion und stemmt den Henkelpott – das Einzige, was er heute noch hochkriegt.',
+    '{n} holt den Henkelpott! Heute Nacht darf er oben liegen.',
+    '{n} ist Champion. Ab jetzt bitte mit «Euer Hoheit» anreden.',
+  ],
+  loser: [
+    '{n} trägt die Rote Laterne nach Hause – und zahlt die nächste Runde.',
+    '{n} ist Letzter. Kein Pott, kein Ruhm, nur ein Kater.',
+    '{n}: Platz 7 und morgen Kopfweh. Gratuliere.',
+  ],
 };
 
 export const BOT_NAMES = ['Bot Ueli', 'Bot Röbi', 'Bot Chantal', 'Bot Bernie', 'Bot Fredi', 'Bot Mändu', 'Bot Sepp', 'Bot Jacqueline'];
