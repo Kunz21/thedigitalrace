@@ -1,22 +1,14 @@
 // ============================================================
-//  FIREBASE-KONFIGURATION
-//  Firebase Console → Projekteinstellungen → «Meine Apps» → Web-App → Konfiguration
-//  Wichtig: databaseURL muss gesetzt sein (Realtime Database).
-//
-//  Bleibt firebaseConfig = null, läuft das Spiel im DEMO-MODUS:
-//  nur im selben Browser (mehrere Tabs) – ideal zum Testen mit Bots.
+//  FIREBASE-KONFIGURATION (Projekt: virtualrace)
+//  Leer (null) = Demo-Modus: nur im selben Browser, ideal zum Testen mit Bots.
 // ============================================================
 
-export const firebaseConfig = null;
-
-/* Beispiel:
 export const firebaseConfig = {
-  apiKey: 'AIza...',
-  authDomain: 'mebong-cl.firebaseapp.com',
-  databaseURL: 'https://mebong-cl-default-rtdb.europe-west1.firebasedatabase.app',
-  projectId: 'mebong-cl',
-  storageBucket: 'mebong-cl.appspot.com',
-  messagingSenderId: '123456789',
-  appId: '1:123456789:web:abc123',
+  apiKey: 'AIzaSyB6XIpdFowp_kUCfGK0xOO1JbcobOtSx7s',
+  authDomain: 'auswaertsfahrt-1de76.firebaseapp.com',
+  databaseURL: 'https://auswaertsfahrt-1de76-default-rtdb.europe-west1.firebasedatabase.app',
+  projectId: 'auswaertsfahrt-1de76',
+  storageBucket: 'auswaertsfahrt-1de76.firebasestorage.app',
+  messagingSenderId: '748505550668',
+  appId: '1:748505550668:web:a892f7dc3466e7f6ae49e9',
 };
-*/
