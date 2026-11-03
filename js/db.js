@@ -1,7 +1,8 @@
 // Datenschicht: Firebase Realtime Database oder lokaler Demo-Modus (localStorage, mehrere Tabs)
 import { firebaseConfig } from './config.js';
 
-export const isDemo = !(firebaseConfig && firebaseConfig.databaseURL);
+// ?demo=1 in der URL erzwingt den Demo-Modus (Testen mit Bots, ohne Firebase)
+export const isDemo = !(firebaseConfig && firebaseConfig.databaseURL) || new URLSearchParams(location.search).has('demo');
 const clean = (v) => (v === undefined ? null : JSON.parse(JSON.stringify(v)));
 
 export async function openRoom(code) {
@@ -40,7 +41,7 @@ async function fbRoom(code) {
 // ---------- Demo-Modus (localStorage) ----------
 function localRoom(code) {
   const PFX = `mbg:${code}:`;
-  const COLL = ['players', 'actions']; // jedes Kind = eigener Schlüssel (weniger Schreibkonflikte)
+  const COLL = ['players', 'actions', 'draw']; // jedes Kind = eigener Schlüssel (weniger Schreibkonflikte)
   const seg = (p) => (p ? p.split('/').filter(Boolean) : []);
   const getIn = (o, s) => { for (const k of s) { if (o == null || typeof o !== 'object') return null; o = o[k]; } return o === undefined ? null : o; };
   const setIn = (o, s, v) => {
