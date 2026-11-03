@@ -1,7 +1,7 @@
 // Oberfläche für alle Handys (Spieler und Spielleiter)
 import { isDemo, openRoom } from './db.js';
 import { Host } from './host.js';
-import { ROUNDS, POINTS, AVATARS, COLORS, SPEED, esc, uid, fmtNum, A, O, placesFrom } from './shared.js';
+import { ROUNDS, STOPP_TARGETS, POINTS, AVATARS, COLORS, SPEED, esc, uid, fmtNum, A, O, placesFrom } from './shared.js';
 import * as C from './content.js';
 import * as SFX from './sound.js';
 import { confetti } from './fx.js';
@@ -10,11 +10,11 @@ const app = document.getElementById('app');
 const params = new URLSearchParams(location.search);
 
 let db = null, code = null, me = null, host = null;
-let S = null, P = {}, META = null;
+let S = null, P = {}, META = null, DRAW = {};
 let screen = 'home';
 const L = {
   mode: 'create', joinCode: (params.get('room') || '').toUpperCase(), avatar: null, err: '', busy: false,
-  taken: [], menu: false, jokerFor: null, sw: null, buzzed: null, passed: null, fxFinal: null,
+  taken: [], menu: false, drinks: false, jokerFor: null, sw: null, buzzed: null, passed: null, fxFinal: null, pen: '#111111',
 };
 let lastHtml = '';
 
@@ -37,6 +37,7 @@ function roomLink(c) {
   const u = new URL(location.href);
   u.search = ''; u.searchParams.set('room', c);
   if (SPEED !== 1) u.searchParams.set('speed', SPEED);
+  if (params.has('demo')) u.searchParams.set('demo', '1');
   return u.toString();
 }
 
@@ -103,6 +104,7 @@ function enterGame(c, pid) {
   history.replaceState(null, '', roomLink(c));
   db.on('state', (v) => { const prev = S; S = v; stateFx(prev, S); render(); });
   db.on('players', (v) => { P = v || {}; render(); });
+  db.on('draw', (v) => { DRAW = v || {}; drawPad(); });
   db.on('meta', (v) => { META = v; if (META?.host === me && !host) { host = new Host(db, me); host.start(); } render(); });
   wakeLock();
   render();
@@ -130,8 +132,9 @@ function header() {
   const showStage = R && !['lobby', 'rules', 'final'].includes(S.phase);
   const mp = P[me];
   return `<header class="top">
-    <div class="brand"><span class="ball">★</span><div><b>Mebongs CL</b><small>${esc(C.SUBTITLE)}</small></div></div>
+    <div class="brand"><span class="ball">★</span>${showStage ? '' : `<div><b>Mebongs CL</b><small>${esc(C.SUBTITLE)}</small></div>`}</div>
     ${showStage ? `<span class="stage">${esc(R.stage)}</span>` : ''}
+    ${S && S.phase !== 'lobby' ? '<button class="icon" data-act="drinks" aria-label="Getränke">🍻</button>' : ''}
     <button class="icon" data-act="sound" aria-label="Ton">${SFX.isOn() ? '🔊' : '🔇'}</button>
     ${mp ? `<span class="me" style="--c:${mp.color}">${mp.avatar}</span>` : ''}
   </header>`;
@@ -180,19 +183,16 @@ function viewLobby() {
       <h2>Sitzordnung <small>${ord.length} Spieler</small></h2>
       <p class="hint">Setzt euch im Uhrzeigersinn in dieser Reihenfolge hin. «Links» heisst im Spiel immer: der Nächste in der Liste.</p>
       <ol class="seats">${ord.map((pid) => `<li>${chip(pid)}
-        ${P[pid]?.alcFree ? '<span class="tag">alkoholfrei</span>' : ''}${P[pid]?.bot ? '<span class="tag">Bot</span>' : ''}
+        ${P[pid]?.bot ? '<span class="tag">Bot</span>' : ''}
         ${H ? `<span class="seatbtns"><button data-act="seat" data-pid="${pid}" data-dir="-1" aria-label="hoch">▲</button><button data-act="seat" data-pid="${pid}" data-dir="1" aria-label="runter">▼</button>${pid !== me ? `<button data-act="kick" data-pid="${pid}" aria-label="entfernen">✕</button>` : ''}</span>` : ''}
       </li>`).join('')}</ol>
-    </section>
-    <section class="card">
-      <button class="toggle ${P[me]?.alcFree ? 'on' : ''}" data-act="alc"><span class="knob"></span>Ich trinke alkoholfrei <small>(${esc(C.ALC_FREE_SHOT)} statt ${esc(C.SHOT)})</small></button>
     </section>
     ${H ? `<section class="card">
       <h3>Einstellungen Spielleiter</h3>
       <div class="row between"><span>Shot-Limit pro Person</span><span class="stepper"><button data-act="limit" data-d="-1">−</button><b>${S.settings?.shotLimit ?? 5}</b><button data-act="limit" data-d="1">+</button></span></div>
       <p class="hint">Ab diesem Wert gibt's statt Shots ein Glas Wasser.</p>
-      <label>Pantomime-Kategorien</label>
-      <div class="chips">${C.PANTO.map((c) => `<button class="cchip ${A(S.settings?.cats).includes(c.id) ? 'on' : ''}" data-act="cat" data-id="${c.id}">${esc(c.name)}</button>`).join('')}</div>
+      <label>Kritzel-Kategorien</label>
+      <div class="chips">${C.ZEICHNEN.map((c) => `<button class="cchip ${A(S.settings?.cats).includes(c.id) ? 'on' : ''}" data-act="cat" data-id="${c.id}">${esc(c.name)}</button>`).join('')}</div>
       <button class="btn ghost" data-act="bot">🤖 Testspieler hinzufügen</button>
     </section>` : `<p class="wait">Warte auf den Anpfiff vom Spielleiter …</p>`}`;
 }
@@ -211,6 +211,7 @@ function viewRules() {
       <li>🥃 Rundenletzter: 1 × ${esc(C.SHOT)}.</li>
       <li>🎡 Danach dreht der Letzte das Glücksrad.</li>
       <li>🃏 Jeder startet mit 1 Joker: einen Shot an jemand anderen weitergeben.</li>
+      <li>🍻 Oben rechts siehst du jederzeit, wer wie viel getrunken hat.</li>
       <li>🏆 Champion: Cocktail nach Wahl + Henkelpott. 🔴 Letzter: Final-Shot und zahlt die nächste Runde.</li>
     </ul>
   </section>`;
@@ -222,7 +223,7 @@ function viewIntro() {
     <div class="stagebig">${esc(R.stage)} · Runde ${S.round + 1}/${ROUNDS.length}</div>
     <div class="gicon">${R.icon}</div>
     <h1>${esc(R.name)}</h1>
-    ${R.double ? '<div class="banner gold">Doppelte Punkte, doppelte Melonen 🍈🍈</div>' : ''}
+    ${R.double ? '<div class="banner gold">Final: doppelte Punkte – jetzt wird\'s dreckig!</div>' : ''}
     <ol class="rules">${R.rules.map((t) => `<li>${esc(t)}</li>`).join('')}</ol>
     <div class="kick">Anpfiff in ${timer(S.endsAt, 'big')}</div>
   </section>`;
@@ -267,20 +268,22 @@ function viewSchaetz(g) {
     <h2 class="question small">${esc(q.q)}</h2>
     <div class="answer"><span>Lösung</span><b>${fmtNum(q.a)} ${esc(q.u)}</b></div>
     <p class="note">${esc(q.n)}</p>
+    ${g.say ? `<div class="banner gold">${esc(g.say)}</div>` : ''}
     <ol class="list">${rows.map((r, i) => `<li class="${i === 0 ? 'best' : ''}">${chip(r.p)}<span class="val">${r.v == null ? '–' : fmtNum(r.v)}</span></li>`).join('')}</ol>
   </section>`;
 }
 
 function viewStopp(g) {
-  const att = A(O(g.res)[me]);
+  const att = A(O(g.res)[me]), n = STOPP_TARGETS.length;
   const ctx = `stopp:${att.length}`;
   const pending = L.sw && L.sw.ctx === ctx && !L.sw.running && L.sw.last != null;
+  const target = STOPP_TARGETS[Math.min(att.length, n - 1)];
   return `<section class="card game center">
-    <div class="qhead"><span>Versuch ${Math.min(att.length + 1, 2)}/2</span>${timer(g.until)}</div>
-    <div class="target">Ziel: <b>10.00</b> Sekunden</div>
-    ${att.map((t, i) => `<div class="attempt">Versuch ${i + 1}: <b>${t.toFixed(2)} s</b> <span class="${Math.abs(t - 10) < 0.3 ? 'good' : ''}">(${t >= 10 ? '+' : ''}${(t - 10).toFixed(2)})</span></div>`).join('')}
-    ${att.length < 2 ? stopwatch(ctx, !pending) : '<div class="done">✅ Fertig – warte auf die anderen.</div>'}
-    <div class="answered">${order().map((p) => `<span class="dot ${A(O(g.res)[p]).length >= 2 ? 'on' : ''}" style="--c:${P[p]?.color}">${P[p]?.avatar}</span>`).join('')}</div>
+    <div class="qhead"><span>Durchgang ${Math.min(att.length + 1, n)}/${n}</span>${timer(g.until)}</div>
+    ${att.length < n ? `<div class="target">Ziel: <b>${target.toFixed(2)}</b> Sekunden</div>` : ''}
+    ${att.map((t, i) => { const d = t - STOPP_TARGETS[i]; return `<div class="attempt">${STOPP_TARGETS[i]} s: <b>${t.toFixed(2)} s</b> <span class="${Math.abs(d) < 0.3 ? 'good' : ''}">(${d >= 0 ? '+' : ''}${d.toFixed(2)})</span></div>`; }).join('')}
+    ${att.length < n ? stopwatch(ctx, !pending) : '<div class="done">✅ Fertig – warte auf die anderen.</div>'}
+    <div class="answered">${order().map((p) => `<span class="dot ${A(O(g.res)[p]).length >= n ? 'on' : ''}" style="--c:${P[p]?.color}">${P[p]?.avatar}</span>`).join('')}</div>
   </section>`;
 }
 
@@ -293,7 +296,7 @@ function viewBuzzer(g) {
   const q = C.BUZZER[A(g.qs)[g.qi]];
   const excl = A(g.excl);
   let body = '';
-  const wrong = g.last && !g.last.ok && g.last.qi === g.qi ? `<div class="banner bad">${chip(g.last.pid)} lag falsch (−1)</div>` : '';
+  const wrong = g.last && !g.last.ok && g.last.qi === g.qi ? `<div class="banner bad">${chip(g.last.pid)} lag falsch (−1)${g.last.say ? `<br><small>${esc(g.last.say)}</small>` : ''}</div>` : '';
   if (g.sub === 'open') {
     const bz = L.buzzed === `${g.qi}_${excl.length}`;
     body = wrong + (excl.includes(me) ? '<div class="done">Du hast falsch getippt – jetzt sind die anderen dran.</div>'
@@ -312,25 +315,95 @@ function viewBuzzer(g) {
     <h2 class="question">${esc(q.q)}</h2>${body}</section>${miniBoard(g.pts, 'Punkte')}`;
 }
 
-function viewPanto(g) {
-  const actors = A(g.actors), actor = actors[g.ai];
+// ---------------- Kritzel-Sprint (Zeichnen & Raten) ----------------
+const PAD = document.createElement('canvas');
+PAD.width = 1000; PAD.height = 1000; PAD.className = 'pad';
+let padStroke = null, padFlush = 0;
+const PEN_COLORS = ['#111111', '#e11d48', '#2563eb', '#16a34a'];
+
+function drawPad() {
+  const g = S?.g, c = PAD.getContext('2d');
+  c.fillStyle = '#ffffff'; c.fillRect(0, 0, 1000, 1000);
+  if (!g || g.id !== 'zeichnen') return;
+  const line = (pts, col, w) => {
+    if (pts.length < 2) return;
+    c.strokeStyle = col; c.lineWidth = w; c.lineCap = 'round'; c.lineJoin = 'round';
+    c.beginPath(); c.moveTo(pts[0], pts[1]);
+    if (pts.length === 2) c.lineTo(pts[0] + 0.1, pts[1]);
+    for (let i = 2; i < pts.length; i += 2) c.lineTo(pts[i], pts[i + 1]);
+    c.stroke();
+  };
+  for (const k of Object.keys(DRAW).sort()) {
+    const st = DRAW[k];
+    if (!st || st.tn !== g.tn) continue;
+    line(String(st.p || '').split(',').map(Number), st.c || '#111', st.w || 8);
+  }
+  if (padStroke && padStroke.tn === g.tn) line(padStroke.pts, padStroke.c, padStroke.w);
+}
+
+function padPos(e) {
+  const r = PAD.getBoundingClientRect();
+  return [Math.round(((e.clientX - r.left) / r.width) * 1000), Math.round(((e.clientY - r.top) / r.height) * 1000)];
+}
+function iDraw() { const g = S?.g; return g && g.id === 'zeichnen' && g.sub === 'turn' && A(g.actors)[g.ai] === me; }
+function flushStroke(end) {
+  if (!padStroke || padStroke.pts.length < 2) { if (end) padStroke = null; return; }
+  db.push('draw', { tn: padStroke.tn, c: padStroke.c, w: padStroke.w, p: padStroke.pts.join(',') });
+  const last = padStroke.pts.slice(-2);
+  padStroke = end ? null : { ...padStroke, pts: last };
+  padFlush = performance.now();
+}
+PAD.addEventListener('pointerdown', (e) => {
+  if (!iDraw()) return;
+  e.preventDefault();
+  try { PAD.setPointerCapture(e.pointerId); } catch {}
+  padStroke = { tn: S.g.tn, c: L.pen, w: L.pen === '#ffffff' ? 40 : 9, pts: padPos(e) };
+  padFlush = performance.now(); drawPad();
+});
+PAD.addEventListener('pointermove', (e) => {
+  if (!padStroke) return;
+  e.preventDefault();
+  padStroke.pts.push(...padPos(e));
+  drawPad();
+  if (performance.now() - padFlush > 150) flushStroke(false);
+});
+['pointerup', 'pointercancel', 'lostpointercapture'].forEach((ev) => PAD.addEventListener(ev, () => flushStroke(true)));
+
+function viewZeichnen(g) {
+  const actors = A(g.actors), actor = actors[g.ai], q = A(g.queue), wrong = A(g.wrong);
+  const queueList = q.length
+    ? `<ol class="queue">${q.map((p, i) => `<li class="${i === 0 ? 'now' : ''}">${chip(p)}${i === 0 ? '<span>rät jetzt</span>' : ''}</li>`).join('')}</ol>`
+    : '<p class="hint center">Noch niemand hat gedrückt.</p>';
+  const hit = g.lastHit && g.lastHit.tn === g.tn - 1 ? `<div class="banner good">${esc(g.lastHit.say || '')}</div>` : '';
   let body = '';
   if (g.sub === 'ready') {
-    body = `<div class="who">${chip(actor, 'big')}<span>ist als Nächstes dran</span></div>
-      ${actor === me ? '<div class="banner gold">Halt dein Handy so, dass niemand reinschaut!</div>' : '<p class="hint center">Gleich wird geraten.</p>'}
+    body = `<div class="who">${chip(actor, 'big')}<span>zeichnet als Nächstes</span></div>
+      ${actor === me ? '<div class="banner gold">Gleich erscheint dein Begriff. Niemandem zeigen!</div>' : '<p class="hint center">Gleich wird geraten.</p>'}
       <div class="kick">Start in ${timer(g.until, 'big')}</div>`;
   } else if (actor === me) {
-    body = `<div class="secret"><small>${esc(g.cat)}</small><b>${esc(g.term)}</b></div>
-      <label>Wer hat's erraten?</label>
-      <div class="pickgrid">${order().filter((p) => p !== me).map((p) => `<button class="pick" data-act="panto" data-g="${p}" data-tn="${g.tn}" style="--c:${P[p]?.color}">${P[p]?.avatar}<span>${esc(nm(p))}</span></button>`).join('')}</div>
-      <button class="btn ghost" data-act="panto" data-g="" data-tn="${g.tn}">⏭️ Überspringen</button>`;
+    body = `<div class="secret small"><small>${esc(g.cat)}</small><b>${esc(g.term)}</b></div>
+      <div id="padslot" class="padwrap"></div>
+      <div class="pens">${PEN_COLORS.map((c) => `<button class="pencol ${L.pen === c ? 'sel' : ''}" style="--pc:${c}" data-act="pen" data-c="${c}" aria-label="Farbe"></button>`).join('')}
+        <button class="pencol eraser ${L.pen === '#ffffff' ? 'sel' : ''}" data-act="pen" data-c="#ffffff" aria-label="Radierer">🧽</button>
+        <button class="btn ghost small" data-act="padClear">🗑️ Alles löschen</button></div>
+      <h3>Wer hat gedrückt?</h3>${queueList}
+      ${q.length ? `<div class="row judge"><button class="btn gold" data-act="djudge" data-ok="1" data-tn="${g.tn}">✅ Richtig</button><button class="btn danger" data-act="djudge" data-ok="0" data-tn="${g.tn}">❌ Falsch</button></div>` : ''}
+      ${hit}
+      <button class="btn ghost" data-act="dskip" data-tn="${g.tn}">⏭️ Begriff überspringen</button>`;
   } else {
-    body = `<div class="who">${chip(actor, 'big')}<span>spielt vor – rate laut!</span></div>
-      <div class="secret quiet"><small>Kategorie</small><b>${esc(g.cat)}</b></div>
-      ${g.lastHit ? `<div class="banner good">${chip(g.lastHit.pid)} hat «${esc(g.lastHit.term)}» erraten!</div>` : ''}`;
+    const myPos = q.indexOf(me);
+    body = `<div class="who row center">${chip(actor)}<span>zeichnet · Kategorie: <b>${esc(g.cat)}</b></span></div>
+      <div id="padslot" class="padwrap"></div>
+      ${hit}
+      ${g.lastWrong && wrong.includes(g.lastWrong.pid) ? `<div class="banner bad">${chip(g.lastWrong.pid)} lag falsch</div>` : ''}
+      ${wrong.includes(me) ? '<div class="done">Falsch geraten – bei diesem Begriff bist du raus.</div>'
+        : myPos === 0 ? '<div class="banner gold big">Du bist dran – sag laut, was es ist!</div>'
+        : myPos > 0 ? `<div class="done">Du bist Nr. ${myPos + 1} in der Reihe.</div>`
+        : `<button class="buzz small" data-fast="dbuzz" data-tn="${g.tn}">ICH WEISS ES!</button>`}
+      <h3>Reihenfolge</h3>${queueList}`;
   }
   return `<section class="card game">
-    <div class="qhead"><span>Darsteller ${g.ai + 1}/${actors.length}</span>${g.sub === 'turn' ? timer(g.until) : ''}</div>${body}</section>${miniBoard(g.pts, 'Erraten')}`;
+    <div class="qhead"><span>Zeichner ${g.ai + 1}/${actors.length}</span>${g.sub === 'turn' ? timer(g.until) : ''}</div>${body}</section>${miniBoard(g.pts, 'Punkte')}`;
 }
 
 function nextAliveClient(g, pid) {
@@ -354,7 +427,7 @@ function viewBombe(g) {
         : `<div class="who">${chip(g.holder, 'big')}<span>hat die Bombe 💣</span></div><p class="hint center">Als Nächstes: ${esc(nm(nx))}</p>`}`;
   } else if (g.sub === 'boom' && g.boom) {
     const it = A(S.pen).find((x) => x.id === g.boom.pen);
-    body = `<div class="boom">💥 BOOM!</div><div class="who">${chip(g.boom.pid, 'big')}<span>fliegt raus auf Platz ${g.boom.place}</span></div>${it ? `<ul class="pen">${penItem(it)}</ul>` : ''}`;
+    body = `<div class="boom">💥 BOOM!</div><div class="who">${chip(g.boom.pid, 'big')}<span>fliegt raus auf Platz ${g.boom.place}</span></div>${g.boom.say ? `<div class="banner bad">${esc(g.boom.say)}</div>` : ''}${it ? `<ul class="pen">${penItem(it)}</ul>` : ''}`;
   } else {
     body = `<div class="boom">🏆</div>`;
   }
@@ -370,7 +443,7 @@ function viewPlay() {
     case 'schaetz': return viewSchaetz(g);
     case 'stopp': return viewStopp(g);
     case 'buzzer': return viewBuzzer(g);
-    case 'panto': return viewPanto(g);
+    case 'zeichnen': return viewZeichnen(g);
     case 'bombe': return viewBombe(g);
   }
   return '';
@@ -511,7 +584,7 @@ function hostBar() {
     case 'rules': b = btn('next', 'Los geht\'s ▶'); break;
     case 'intro': b = btn('plus', '+1 Min', 'ghost') + btn('next', 'Anpfiff ▶'); break;
     case 'play': {
-      const canStep = g && (g.id === 'schaetz' || (g.id === 'buzzer' && g.sub !== 'answer') || g.id === 'panto' || (g.id === 'bombe' && g.sub !== 'live'));
+      const canStep = g && (g.id === 'schaetz' || (g.id === 'buzzer' && g.sub !== 'answer') || g.id === 'zeichnen' || (g.id === 'bombe' && g.sub !== 'live'));
       b = btn('plus', '+1 Min', 'ghost') + (canStep ? btn('step', 'Weiter ⏭', 'ghost') : '') + btn('endRound', 'Runde beenden ⏹', 'danger');
       break;
     }
@@ -523,6 +596,34 @@ function hostBar() {
     case 'final': b = btn('restart', 'Neues Turnier', 'ghost'); break;
   }
   return `<nav class="hostbar"><button class="btn ghost icononly" data-act="menu" aria-label="Menü">☰</button>${b}</nav>`;
+}
+
+const DRINK_LABEL = { shot: '🥃 Shot', water: '💧 Wasser', cocktail: '🍸 Cocktail', exen: '🍺 Exen' };
+function drinksSheet() {
+  if (!L.drinks || !S) return '';
+  const st = O(S.stats), log = A(S.log).slice().reverse();
+  const rows = order().slice().sort((a, b) => (O(st[b]).shots || 0) - (O(st[a]).shots || 0));
+  const mine = log.filter((x) => x.pid === me);
+  const line = (x) => `<li class="${x.j ? 'jok' : ''}">${chip(x.pid)}<span class="what">${DRINK_LABEL[x.k] || x.k}${x.k === 'cocktail' ? ': ' + esc(x.why) : ''}</span>
+    <span class="why">${x.k === 'cocktail' ? '' : esc(x.why || '')}${x.j ? ` · 🃏 an ${esc(nm(x.j))} weitergegeben` : ''}${x.r >= 0 && ROUNDS[x.r] ? ` · ${esc(ROUNDS[x.r].stage)}` : ''}</span></li>`;
+  return `<div class="overlay" data-act="drinksClose"><div class="sheet" data-stop="1">
+    <h2>🍻 Getränke-Bilanz</h2>
+    <div class="menu-drinks">
+      <div><b>🥃 Shot</b><span>${esc(C.SHOT)}</span></div>
+      <div><b>🍸 Cocktails</b><span>${C.COCKTAILS.map(esc).join(' · ')}</span></div>
+      <div><b>🍺 Exen</b><span>Hauptgetränk in einem Zug</span></div>
+      <div><b>⛔ Limit</b><span>${S.settings?.shotLimit ?? 5} Shots pro Person, danach Wasser</span></div>
+    </div>
+    <table class="drinktab"><thead><tr><th></th><th>🥃</th><th>🍸</th><th>🍺</th><th>🃏</th></tr></thead><tbody>
+      ${rows.map((p) => { const x = O(st[p]); return `<tr class="${p === me ? 'mine' : ''}"><td>${chip(p)}</td><td>${x.shots || 0}</td><td>${x.cocktails || 0}</td><td>${x.exen || 0}</td><td>${x.jokers ?? 0}</td></tr>`; }).join('')}
+    </tbody></table>
+    <p class="hint">🥃 Shots · 🍸 Cocktails · 🍺 Exen · 🃏 übrige Joker</p>
+    <h3>Deine Getränke (${mine.length})</h3>
+    <ul class="drinklog">${mine.map(line).join('') || '<li class="hint">Noch nichts – das ändert sich gleich.</li>'}</ul>
+    <h3>Protokoll aller Getränke (${log.length})</h3>
+    <ul class="drinklog">${log.map(line).join('') || '<li class="hint">Noch nichts getrunken.</li>'}</ul>
+    <button class="btn" data-act="drinksClose">Schliessen</button>
+  </div></div>`;
 }
 
 function hostMenu() {
@@ -556,7 +657,7 @@ function view() {
     case 'tiebreak': body = viewTiebreak(); break;
     case 'final': body = viewFinal(); break;
   }
-  return header() + `<main class="ph-${S.phase}">${body}</main>` + hostBar() + hostMenu();
+  return header() + `<main class="ph-${S.phase}">${body}</main>` + hostBar() + hostMenu() + drinksSheet();
 }
 
 function render() {
@@ -575,6 +676,8 @@ function render() {
 
 let qrLib = null;
 function afterRender() {
+  const slot = document.getElementById('padslot');
+  if (slot) { slot.appendChild(PAD); PAD.classList.toggle('live', iDraw()); drawPad(); }
   const q = document.getElementById('qr');
   if (q && q.dataset.url) {
     const draw = () => { try { q.innerHTML = ''; new window.QRCode(q, { text: q.dataset.url, width: 168, height: 168, colorDark: '#0b1238', colorLight: '#ffffff' }); } catch {} };
@@ -640,7 +743,12 @@ function stateFx(a, b) {
     if (gb.who && gb.who !== ga.who) { SFX.buzz(); vib(80); }
     if (gb.last?.k && gb.last.k !== ga.last?.k) (gb.last.ok ? SFX.ding : SFX.honk)();
   }
-  if (gb.id === 'panto' && gb.lastHit?.tn && gb.lastHit.tn !== ga.lastHit?.tn) SFX.ding();
+  if (gb.id === 'zeichnen') {
+    if (gb.lastHit?.tn && gb.lastHit.tn !== ga.lastHit?.tn) SFX.ding();
+    if (gb.lastWrong?.k && gb.lastWrong.k !== ga.lastWrong?.k) SFX.honk();
+    if (A(gb.queue).length > A(ga.queue).length) { SFX.buzz(); vib(60); }
+    if (gb.tn !== ga.tn) padStroke = null;
+  }
   if (gb.id === 'schaetz' && gb.sub === 'reveal' && ga.sub !== 'reveal') SFX.jingle();
   if (gb.id === 'bombe' && gb.boom?.at && gb.boom.at !== ga.boom?.at) {
     SFX.boom(); vib([250, 80, 400]);
@@ -672,7 +780,6 @@ const handlers = {
     const url = roomLink(code), text = `${C.TITLE} – ${C.SUBTITLE}. Raum-Code ${code}`;
     try { if (navigator.share) await navigator.share({ title: C.TITLE, text, url }); else { await navigator.clipboard.writeText(url); alert('Link kopiert!'); } } catch {}
   },
-  alc: () => db.update('players/' + me, { alcFree: !P[me]?.alcFree }),
   seat: (d) => hostCmd('seat', { pid: d.pid, dir: d.dir }),
   kick: (d) => { if (confirm(`${nm(d.pid)} entfernen?`)) hostCmd('kick', { pid: d.pid }); },
   limit: (d) => hostCmd('shotLimit', { d: d.d }),
@@ -694,7 +801,12 @@ const handlers = {
   },
   swstart: (d) => { SFX.click(); L.sw = { ctx: d.ctx, running: true, start: performance.now() }; render(); requestAnimationFrame(swLoop); },
   ans: (d) => send('ans', { q: Number(d.q), opt: Number(d.opt) }),
-  panto: (d) => send('panto', { tn: Number(d.tn), guesser: d.g || null }),
+  djudge: (d) => send('djudge', { tn: Number(d.tn), ok: d.ok === '1' }),
+  dskip: (d) => send('dskip', { tn: Number(d.tn) }),
+  pen: (d) => { L.pen = d.c; render(); },
+  padClear: () => { if (confirm('Ganze Zeichnung löschen?')) db.remove('draw'); },
+  drinks: () => { L.drinks = true; render(); },
+  drinksClose: () => { L.drinks = false; render(); },
   cocktail: (d) => send('cocktail', { id: d.id, choice: d.v }),
   give: (d) => send('give', { id: d.id, target: d.target }),
   jokerOpen: (d) => { L.jokerFor = d.id; render(); },
@@ -714,6 +826,7 @@ const fast = {
     SFX.click(); render();
   },
   buzz: (d) => { const g = S.g; L.buzzed = `${g.qi}_${A(g.excl).length}`; send('buzz', { q: Number(d.q) }); SFX.click(); vib(40); render(); },
+  dbuzz: (d) => { if (L.dbuzzed === d.tn) return; L.dbuzzed = d.tn; send('dbuzz', { tn: Number(d.tn) }); SFX.click(); vib(40); },
   pass: (d) => { const g = S.g; if (L.passed === `${g.n}_${g.passes}`) return; L.passed = `${g.n}_${g.passes}`; send('pass', { n: Number(d.n) }); SFX.click(); render(); },
 };
 
