@@ -1,7 +1,7 @@
 // Spielleiter-Engine: läuft nur auf dem Handy, das den Raum eröffnet hat.
 // Sie ist die einzige Instanz, die den Spielstand (state) schreibt.
 // Alle anderen Handys schicken nur Aktionen (actions).
-import { ROUNDS, ptsFor, placesFrom, uid, rnd, ri, pickOne, shuffle, gauss, COLORS, AVATARS, A, O, D, fill } from './shared.js';
+import { ROUNDS, STOPP_TARGETS, ptsFor, placesFrom, uid, rnd, ri, pickOne, shuffle, gauss, COLORS, AVATARS, A, O, D, fill } from './shared.js';
 import * as C from './content.js';
 
 export class Host {
@@ -27,8 +27,8 @@ export class Host {
   fresh(keep) {
     return {
       phase: 'lobby', round: -1, endsAt: null,
-      order: keep?.order || [], scores: {}, stats: {}, pen: [], hist: [],
-      settings: keep?.settings || { shotLimit: 5, cats: C.PANTO.map((c) => c.id) },
+      order: keep?.order || [], scores: {}, stats: {}, pen: [], hist: [], log: [],
+      settings: keep?.settings || { shotLimit: 5, cats: C.ZEICHNEN.map((c) => c.id) },
       g: null, res: null, wheel: null, table: null, tie: null, final: null, v: 0,
     };
   }
@@ -36,7 +36,7 @@ export class Host {
   norm(s) {
     const f = this.fresh();
     s = { ...f, ...s };
-    s.order = A(s.order); s.scores = O(s.scores); s.stats = O(s.stats); s.pen = A(s.pen); s.hist = A(s.hist);
+    s.order = A(s.order); s.scores = O(s.scores); s.stats = O(s.stats); s.pen = A(s.pen); s.hist = A(s.hist); s.log = A(s.log);
     s.settings = { ...f.settings, ...O(s.settings) }; s.settings.cats = A(s.settings.cats);
     return s;
   }
@@ -51,9 +51,12 @@ export class Host {
     });
   }
 
+  say(key, vars) { return fill(pickOne(C.SAY[key]), vars); }
+  logDrink(pid, k, why, id = null) { this.S.log.push({ id: id || uid(), pid, k, why, r: this.S.round, at: this.now() }); }
+
   stat(pid) {
     const S = this.S;
-    if (!S.stats[pid]) S.stats[pid] = { shots: 0, cocktails: 0, jokers: 1 };
+    if (!S.stats[pid]) S.stats[pid] = { shots: 0, cocktails: 0, exen: 0, jokers: 1 };
     return S.stats[pid];
   }
 
@@ -105,9 +108,9 @@ export class Host {
       case 'stop':
         if (inGame('stopp')) {
           g.res = O(g.res); const r = A(g.res[a.pid]);
-          if (r.length === a.att && a.att < 2 && isFinite(Number(a.time))) {
+          if (r.length === a.att && a.att < STOPP_TARGETS.length && isFinite(Number(a.time))) {
             r.push(Number(a.time)); g.res[a.pid] = r;
-            if (S.order.every((p) => A(g.res[p]).length >= 2)) g.until = Math.min(g.until, n + 2500);
+            if (S.order.every((p) => A(g.res[p]).length >= STOPP_TARGETS.length)) g.until = Math.min(g.until, n + 2500);
           }
         }
         break;
@@ -120,16 +123,27 @@ export class Host {
       case 'ans':
         if (inGame('buzzer') && g.sub === 'answer' && g.who === a.pid && a.q === g.qi) this.bzAnswer(a.pid, Number(a.opt));
         break;
-      case 'panto':
-        if (inGame('panto') && g.sub === 'turn' && A(g.actors)[g.ai] === a.pid && a.tn === g.tn) {
-          if (a.guesser && a.guesser !== a.pid && S.order.includes(a.guesser)) {
+      case 'dbuzz':
+        if (inGame('zeichnen') && g.sub === 'turn' && a.tn === g.tn && A(g.actors)[g.ai] !== a.pid
+          && !A(g.queue).includes(a.pid) && !A(g.wrong).includes(a.pid)) g.queue = [...A(g.queue), a.pid];
+        break;
+      case 'djudge':
+        if (inGame('zeichnen') && g.sub === 'turn' && a.tn === g.tn && A(g.actors)[g.ai] === a.pid && A(g.queue).length) {
+          const who = g.queue[0];
+          if (a.ok) {
             g.pts = O(g.pts);
             g.pts[a.pid] = (g.pts[a.pid] || 0) + 1;
-            g.pts[a.guesser] = (g.pts[a.guesser] || 0) + 1;
-            g.lastHit = { pid: a.guesser, term: g.term, tn: g.tn };
+            g.pts[who] = (g.pts[who] || 0) + 2;
+            g.lastHit = { pid: who, term: g.term, tn: g.tn, say: this.say('drawHit', { g: this.name(who), t: g.term }) };
+            this.ptTerm();
+          } else {
+            g.wrong = [...A(g.wrong), who]; g.queue = g.queue.slice(1);
+            g.lastWrong = { pid: who, k: uid() };
           }
-          this.ptTerm();
         }
+        break;
+      case 'dskip':
+        if (inGame('zeichnen') && g.sub === 'turn' && a.tn === g.tn && A(g.actors)[g.ai] === a.pid) this.ptTerm();
         break;
       case 'pass':
         if (inGame('bombe') && g.sub === 'live' && g.holder === a.pid && a.n === g.n) {
@@ -140,6 +154,7 @@ export class Host {
         const it = S.pen.find((x) => x.id === a.id);
         if (it && it.type === 'cocktail' && it.pid === a.pid && !it.choice && C.COCKTAILS.includes(a.choice)) {
           it.choice = a.choice; this.stat(a.pid).cocktails++;
+          this.logDrink(a.pid, 'cocktail', a.choice);
         }
         break;
       }
@@ -156,6 +171,7 @@ export class Host {
         const st = this.stat(a.pid);
         if (it && it.type === 'shot' && it.pid === a.pid && it.status !== 'jokered' && st.jokers > 0 && S.order.includes(a.target) && a.target !== a.pid) {
           st.jokers--; it.status = 'jokered'; it.to = a.target;
+          const lg = S.log.find((x) => x.id === it.id); if (lg) lg.j = a.target;
           if (it.counted) { st.shots = Math.max(0, st.shots - 1); it.counted = false; }
           this.addShot(a.target, `Joker von ${this.name(a.pid)} 🃏`, a.pid);
         }
@@ -258,7 +274,7 @@ export class Host {
       case 'schaetz': g.sub === 'ask' ? this.scReveal() : this.scNext(); break;
       case 'stopp': return this.finishGame();
       case 'buzzer': if (g.sub === 'open') this.bzReveal(); else if (g.sub === 'reveal') this.bzNext(); break;
-      case 'panto': g.sub === 'ready' ? this.ptTurn() : this.ptNext(); break;
+      case 'zeichnen': g.sub === 'ready' ? this.ptTurn() : this.ptNext(); break;
       case 'bombe': if (g.sub === 'ready') this.boLive(); else if (g.sub === 'boom') this.boAfter(); break;
     }
     this.commit();
@@ -291,17 +307,18 @@ export class Host {
     S.phase = 'play'; S.endsAt = null;
     switch (R.id) {
       case 'schaetz':
-        S.g = { id: 'schaetz', qs: shuffle(C.SCHAETZ.map((_, i) => i)).slice(0, 3), qi: 0, sub: 'ask', until: n + D(60), ans: {} };
+        S.g = { id: 'schaetz', qs: shuffle(C.SCHAETZ.map((_, i) => i)).slice(0, 8), qi: 0, sub: 'ask', until: n + D(35), ans: {} };
         break;
       case 'stopp':
         S.g = { id: 'stopp', until: n + D(150), res: {} };
         break;
       case 'buzzer':
-        S.endsAt = n + D(360);
-        S.g = { id: 'buzzer', qs: shuffle(C.BUZZER.map((_, i) => i)).slice(0, 10), qi: 0, sub: 'open', until: n + D(20), excl: [], who: null, last: null, pts: {} };
+        S.endsAt = n + D(420);
+        S.g = { id: 'buzzer', qs: shuffle(C.BUZZER.map((_, i) => i)).slice(0, 15), qi: 0, sub: 'open', until: n + D(15), excl: [], who: null, last: null, pts: {} };
         break;
-      case 'panto':
-        S.g = { id: 'panto', actors: S.order.slice(), ai: 0, sub: 'ready', until: n + D(6), term: null, cat: null, tn: 0, pts: {}, used: [], lastHit: null };
+      case 'zeichnen':
+        this.db.remove('draw');
+        S.g = { id: 'zeichnen', actors: S.order.slice(), ai: 0, sub: 'ready', until: n + D(6), term: null, cat: null, tn: 0, pts: {}, used: [], queue: [], wrong: [], lastHit: null };
         break;
       case 'bombe':
         S.g = { id: 'bombe', alive: S.order.slice(), out: [], n: 0, sub: 'ready', until: n + D(6), holder: pickOne(S.order), cat: null, usedCats: [], passes: 0, boom: null };
@@ -322,7 +339,7 @@ export class Host {
         else if (g.sub === 'answer') this.bzAnswer(g.who, -1);
         else if (g.sub === 'reveal') this.bzNext();
         this.commit(); break;
-      case 'panto': if (due) { g.sub === 'ready' ? this.ptTurn() : this.ptNext(); this.commit(); } break;
+      case 'zeichnen': if (due) { g.sub === 'ready' ? this.ptTurn() : this.ptNext(); this.commit(); } break;
       case 'bombe':
         if (g.sub === 'ready' && due) { this.boLive(); this.commit(); }
         else if (g.sub === 'live' && g.fuse && n >= g.fuse) { this.boExplode(); this.commit(); }
@@ -332,11 +349,17 @@ export class Host {
   }
 
   // Schätzmeister
-  scReveal() { const g = this.S.g; g.sub = 'reveal'; g.until = this.now() + D(20); }
+  scReveal() {
+    const g = this.S.g, q = C.SCHAETZ[g.qs[g.qi]], ans = O(O(g.ans)['q' + g.qi]);
+    let best = null;
+    for (const p of this.S.order) if (ans[p] != null && (best == null || Math.abs(ans[p] - q.a) < Math.abs(ans[best] - q.a))) best = p;
+    g.say = best ? this.say('schaetzBest', { n: this.name(best) }) : '';
+    g.sub = 'reveal'; g.until = this.now() + D(10);
+  }
   scNext() {
     const g = this.S.g; g.qi++;
     if (g.qi >= A(g.qs).length) return this.finishGame();
-    g.sub = 'ask'; g.until = this.now() + D(60);
+    g.sub = 'ask'; g.until = this.now() + D(35); g.say = '';
   }
 
   // Buzzer
@@ -345,41 +368,44 @@ export class Host {
     const S = this.S, g = S.g;
     if (!w || !(S.phase === 'play' && g?.id === 'buzzer' && g.sub === 'open' && g.qi === w.qi)) return;
     w.c.sort((x, y) => x.at - y.at);
-    g.sub = 'answer'; g.who = w.c[0].pid; g.until = this.now() + D(8);
+    g.sub = 'answer'; g.who = w.c[0].pid; g.until = this.now() + D(5);
     this.commit();
   }
   bzAnswer(pid, opt) {
     const S = this.S, g = S.g, q = C.BUZZER[g.qs[g.qi]];
     const ok = opt === q.c;
     g.pts = O(g.pts); g.pts[pid] = (g.pts[pid] || 0) + (ok ? 1 : -1);
-    g.last = { pid, ok, opt, qi: g.qi, k: uid() }; g.who = null;
+    g.last = { pid, ok, opt, qi: g.qi, k: uid(), say: ok ? '' : this.say('buzzWrong', { n: this.name(pid) }) }; g.who = null;
     if (ok) return this.bzReveal();
     g.excl = [...A(g.excl), pid];
     if (S.order.every((p) => g.excl.includes(p))) return this.bzReveal();
-    g.sub = 'open'; g.until = this.now() + D(15);
+    g.sub = 'open'; g.until = this.now() + D(12);
   }
   bzReveal() { const g = this.S.g; g.sub = 'reveal'; g.who = null; g.until = this.now() + D(4); }
   bzNext() {
     const g = this.S.g; g.qi++;
     if (g.qi >= A(g.qs).length) return this.finishGame();
-    Object.assign(g, { sub: 'open', until: this.now() + D(20), excl: [], who: null, last: null });
+    Object.assign(g, { sub: 'open', until: this.now() + D(15), excl: [], who: null, last: null });
   }
 
   // Pantomime
   ptTurn() { const g = this.S.g; g.sub = 'turn'; g.until = this.now() + D(45); g.lastHit = null; this.ptTerm(); }
   ptTerm() {
     const g = this.S.g;
-    const sel = C.PANTO.filter((c) => this.S.settings.cats.includes(c.id));
-    const pool = sel.length ? sel : C.PANTO;
+    const sel = C.ZEICHNEN.filter((c) => this.S.settings.cats.includes(c.id));
+    const pool = sel.length ? sel : C.ZEICHNEN;
     let used = A(g.used); const opts = [];
     const collect = () => pool.forEach((c) => c.terms.forEach((t, i) => { const k = c.id + ':' + i; if (!used.includes(k)) opts.push({ c, t, k }); }));
     collect();
     if (!opts.length) { used = []; collect(); }
     const o = pickOne(opts);
     g.used = [...used, o.k]; g.term = o.t; g.cat = o.c.name; g.tn = (g.tn || 0) + 1;
+    g.queue = []; g.wrong = []; g.lastWrong = null;
+    this.db.remove('draw');
   }
   ptNext() {
-    const g = this.S.g; g.ai++; g.term = null; g.lastHit = null;
+    const g = this.S.g; g.ai++; g.term = null; g.lastHit = null; g.queue = []; g.wrong = [];
+    this.db.remove('draw');
     if (g.ai >= A(g.actors).length) return this.finishGame();
     g.sub = 'ready'; g.until = this.now() + D(6);
   }
@@ -405,7 +431,7 @@ export class Host {
     g.alive = A(g.alive).filter((p) => p !== v);
     g.out = [...A(g.out), v];
     const it = this.addShot(v, 'Bombe explodiert 💥');
-    g.boom = { pid: v, at: this.now(), pen: it.id, place: g.alive.length + 1 };
+    g.boom = { pid: v, at: this.now(), pen: it.id, place: g.alive.length + 1, say: this.say('boom', { n: this.name(v) }) };
     g.sub = 'boom'; g.until = this.now() + D(9); g.fuse = null;
     g.holder = this.nextAlive(v);
   }
@@ -435,13 +461,16 @@ export class Host {
       case 'stopp':
         P.forEach((p) => {
           const r = A(O(g.res)[p]);
-          if (r.length) { const best = r.reduce((b, t) => (Math.abs(t - 10) < Math.abs(b - 10) ? t : b)); vals[p] = Math.abs(best - 10); det[p] = best.toFixed(2) + ' s'; }
-          else det[p] = 'nicht gestoppt';
+          if (r.length) {
+            // nicht gespielte Durchgänge zählen als volle Zielzeit daneben
+            vals[p] = STOPP_TARGETS.reduce((sum, t, i) => sum + (r[i] != null ? Math.abs(r[i] - t) : t), 0);
+            det[p] = `${r.map((t) => t.toFixed(2)).join(' · ')} s · Abw. ${vals[p].toFixed(2)}`;
+          } else det[p] = 'nicht gestoppt';
         });
         return { vals, hi: false, det };
       case 'buzzer':
-      case 'panto':
-        P.forEach((p) => { vals[p] = O(g.pts)[p] || 0; det[p] = vals[p] + (g.id === 'panto' ? ' erraten' : Math.abs(vals[p]) === 1 ? ' Punkt' : ' Punkte'); });
+      case 'zeichnen':
+        P.forEach((p) => { vals[p] = O(g.pts)[p] || 0; det[p] = vals[p] + (Math.abs(vals[p]) === 1 ? ' Punkt' : ' Punkte'); });
         return { vals, hi: true, det };
       case 'bombe': {
         const out = A(g.out);
@@ -465,18 +494,18 @@ export class Host {
     S.hist.push({ r: S.round, places, pts });
     const rows = P.slice().sort((a, b) => places[a] - places[b]).map((p) => ({ pid: p, place: places[p], pts: pts[p], det: det[p] || '' }));
     const winners = rows.filter((r) => r.place === rows[0].place).map((r) => r.pid);
-    S.res = { rows, say: fill(pickOne(C.SAY.roundWin), { n: winners.map((p) => this.name(p)).join(' & ') }) };
+    S.res = { rows, say: this.say('roundWin', { n: winners.map((p) => this.name(p)).join(' & ') }) };
     S.phase = 'result'; S.endsAt = null; this.buzzWin = null;
     this.commit();
   }
 
   addShot(pid, reason, by = null) {
-    const S = this.S, st = this.stat(pid), p = this.players[pid] || {};
+    const S = this.S, st = this.stat(pid);
     const it = { id: uid(), type: 'shot', pid, reason, by, counted: false, status: 'open' };
-    if (p.alcFree) it.text = C.ALC_FREE_SHOT;
-    else if (st.shots >= (S.settings.shotLimit || 5)) { it.type = 'water'; it.text = 'Shot-Limit erreicht → ein Glas Wasser 💧'; }
+    if (st.shots >= (S.settings.shotLimit || 5)) { it.type = 'water'; it.text = 'Shot-Limit erreicht → ein Glas Wasser 💧'; }
     else { it.text = `1 × ${C.SHOT} 🥃`; st.shots++; it.counted = true; }
     S.pen.push(it);
+    this.logDrink(pid, it.type, reason, it.id);
     return it;
   }
 
@@ -519,7 +548,7 @@ export class Host {
         text = `−2 Punkte für ${lead.map((p) => this.name(p)).join(' & ')}`; break;
       }
       case 4: this.stat(L).jokers++; text = `${this.name(L)} bekommt einen Joker 🃏`; break;
-      case 5: S.pen.push({ id: uid(), type: 'exen', pid: L }); text = `${this.name(L)} ext sein Hauptgetränk 🍺`; break;
+      case 5: S.pen.push({ id: uid(), type: 'exen', pid: L }); this.stat(L).exen++; this.logDrink(L, 'exen', 'Glücksrad'); text = `${this.name(L)} ext sein Hauptgetränk 🍺`; break;
     }
     S.wheel = { ...S.wheel, spinId: uid(), idx, at: this.now(), jit: Math.round(rnd(-20, 20)), text, penFrom: base };
     this.commit();
@@ -586,8 +615,8 @@ export class Host {
     S.final = {
       rows: sorted.map((p, i) => ({ pid: p, place: places[i], score: S.scores[p] || 0 })),
       at: n,
-      champ: fill(C.SAY.champion, { n: this.name(champ) }),
-      loser: fill(C.SAY.loser, { n: this.name(loser) }),
+      champ: this.say('champion', { n: this.name(champ) }),
+      loser: this.say('loser', { n: this.name(loser) }),
     };
     S.phase = 'final'; S.endsAt = null;
     this.commit();
@@ -605,6 +634,14 @@ export class Host {
     }
   }
 
+  botScribble(tn) {
+    for (let k = 0; k < 4; k++) {
+      let x = rnd(150, 850), y = rnd(150, 850); const pts = [];
+      for (let i = 0; i < 12; i++) { x = Math.max(20, Math.min(980, x + rnd(-90, 90))); y = Math.max(20, Math.min(980, y + rnd(-90, 90))); pts.push(Math.round(x), Math.round(y)); }
+      this.db.push('draw', { tn, c: '#111111', w: 8, p: pts.join(',') });
+    }
+  }
+
   botPlan(pid) {
     const S = this.S, g = S.g, others = S.order.filter((p) => p !== pid), r = S.round;
     if (S.phase === 'play' && g) {
@@ -617,7 +654,7 @@ export class Host {
           break;
         case 'stopp': {
           const k = A(O(g.res)[pid]).length;
-          if (k < 2) return { key: `r${r}st${k}`, d: rnd(4, 11), fn: () => ({ t: 'stop', att: k, time: +(10 + gauss() * 1.1).toFixed(2) }) };
+          if (k < STOPP_TARGETS.length) return { key: `r${r}st${k}`, d: STOPP_TARGETS[k] + rnd(1, 4), fn: () => ({ t: 'stop', att: k, time: +(STOPP_TARGETS[k] + gauss() * 1.3).toFixed(2) }) };
           break;
         }
         case 'buzzer': {
@@ -625,16 +662,21 @@ export class Host {
           if (g.sub === 'open' && !A(g.excl).includes(pid)) return { key: `r${r}b${qi}x${x}`, d: rnd(2, 12), fn: () => (Math.random() < 0.45 ? { t: 'buzz', q: qi } : null) };
           if (g.sub === 'answer' && g.who === pid) {
             const q = C.BUZZER[g.qs[qi]];
-            return { key: `r${r}ba${qi}x${x}`, d: rnd(1.5, 4), fn: () => ({ t: 'ans', q: qi, opt: Math.random() < 0.55 ? q.c : ri(q.o.length) }) };
+            return { key: `r${r}ba${qi}x${x}`, d: rnd(1, 3.5), fn: () => ({ t: 'ans', q: qi, opt: Math.random() < 0.55 ? q.c : ri(q.o.length) }) };
           }
           break;
         }
-        case 'panto':
-          if (g.sub === 'turn' && A(g.actors)[g.ai] === pid) {
-            const tn = g.tn;
-            return { key: `r${r}p${tn}`, d: rnd(5, 13), fn: () => ({ t: 'panto', tn, guesser: Math.random() < 0.8 ? pickOne(others) : null }) };
+        case 'zeichnen': {
+          const tn = g.tn, q = A(g.queue), drawer = A(g.actors)[g.ai];
+          if (g.sub !== 'turn') break;
+          if (drawer === pid) {
+            if (q.length) return { key: `r${r}j${tn}_${q.length}_${A(g.wrong).length}`, d: rnd(2, 4), fn: () => ({ t: 'djudge', tn, ok: Math.random() < 0.6 }) };
+            if (this.botDrawn !== tn) return { key: `r${r}d${tn}`, d: 0.5, fn: () => { this.botDrawn = tn; this.botScribble(tn); return null; } };
+            return { key: `r${r}s${tn}`, d: 14, fn: () => (this.S.g?.tn === tn && !A(this.S.g.queue).length ? { t: 'dskip', tn } : null) };
           }
+          if (!q.includes(pid) && !A(g.wrong).includes(pid)) return { key: `r${r}g${tn}`, d: rnd(3, 14), fn: () => (Math.random() < 0.5 ? { t: 'dbuzz', tn } : null) };
           break;
+        }
         case 'bombe':
           if (g.sub === 'live' && g.holder === pid) { const nn = g.n; return { key: `r${r}bo${nn}_${g.passes}`, d: rnd(1.5, 5), fn: () => ({ t: 'pass', n: nn }) }; }
           break;
