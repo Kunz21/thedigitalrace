@@ -1,7 +1,7 @@
 // Oberfläche für alle Handys (Spieler und Spielleiter)
 import { isDemo, openRoom } from './db.js';
 import { Host } from './host.js';
-import { ROUNDS, STOPP_TARGETS, POINTS, AVATARS, COLORS, SPEED, esc, uid, fmtNum, A, O, placesFrom } from './shared.js';
+import { ROUNDS, STOPP_TARGETS, STOPP_TRIES, STOPP_TOTAL, stoppTarget, stoppBest, POINTS, AVATARS, COLORS, SPEED, esc, uid, fmtNum, A, O, placesFrom } from './shared.js';
 import * as C from './content.js';
 import * as SFX from './sound.js';
 import { confetti } from './fx.js';
@@ -14,7 +14,7 @@ let S = null, P = {}, META = null, DRAW = {};
 let screen = 'home';
 const L = {
   mode: 'create', joinCode: (params.get('room') || '').toUpperCase(), avatar: null, err: '', busy: false,
-  taken: [], menu: false, drinks: false, jokerFor: null, sw: null, buzzed: null, passed: null, fxFinal: null, pen: '#111111',
+  taken: [], menu: false, adj: {}, drinks: false, jokerFor: null, sw: null, buzzed: null, passed: null, fxFinal: null, pen: '#111111',
 };
 let lastHtml = '';
 
@@ -274,16 +274,22 @@ function viewSchaetz(g) {
 }
 
 function viewStopp(g) {
-  const att = A(O(g.res)[me]), n = STOPP_TARGETS.length;
-  const ctx = `stopp:${att.length}`;
+  const att = A(O(g.res)[me]), k = att.length;
+  const ctx = `stopp:${k}`;
   const pending = L.sw && L.sw.ctx === ctx && !L.sw.running && L.sw.last != null;
-  const target = STOPP_TARGETS[Math.min(att.length, n - 1)];
+  const ti = Math.floor(k / STOPP_TRIES), done = k >= STOPP_TOTAL;
+  const best = stoppBest(att);
+  const blocks = STOPP_TARGETS.map((t, i) => {
+    const tries = att.slice(i * STOPP_TRIES, (i + 1) * STOPP_TRIES);
+    if (!tries.length) return '';
+    return `<div class="sblock"><b>${t} s</b>${tries.map((x, j) => { const d = x - t; return `<span class="${j === best[i].bi ? 'best' : ''}">${x.toFixed(2)} <small>(${d >= 0 ? '+' : ''}${d.toFixed(2)})</small></span>`; }).join('')}</div>`;
+  }).join('');
   return `<section class="card game center">
-    <div class="qhead"><span>Durchgang ${Math.min(att.length + 1, n)}/${n}</span>${timer(g.until)}</div>
-    ${att.length < n ? `<div class="target">Ziel: <b>${target.toFixed(2)}</b> Sekunden</div>` : ''}
-    ${att.map((t, i) => { const d = t - STOPP_TARGETS[i]; return `<div class="attempt">${STOPP_TARGETS[i]} s: <b>${t.toFixed(2)} s</b> <span class="${Math.abs(d) < 0.3 ? 'good' : ''}">(${d >= 0 ? '+' : ''}${d.toFixed(2)})</span></div>`; }).join('')}
-    ${att.length < n ? stopwatch(ctx, !pending) : '<div class="done">✅ Fertig – warte auf die anderen.</div>'}
-    <div class="answered">${order().map((p) => `<span class="dot ${A(O(g.res)[p]).length >= n ? 'on' : ''}" style="--c:${P[p]?.color}">${P[p]?.avatar}</span>`).join('')}</div>
+    <div class="qhead"><span>${done ? 'Alle Durchgänge gespielt' : `Durchgang ${ti + 1}/${STOPP_TARGETS.length} · Versuch ${(k % STOPP_TRIES) + 1}/${STOPP_TRIES}`}</span></div>
+    ${!done ? `<div class="target">Ziel: <b>${stoppTarget(k).toFixed(2)}</b> Sekunden</div>` : ''}
+    ${!done ? stopwatch(ctx, !pending) : '<div class="done">✅ Fertig – warte auf die anderen.</div>'}
+    ${blocks ? `<div class="sblocks">${blocks}</div><p class="hint">Gelb = bester Versuch, der zählt.</p>` : ''}
+    <div class="answered">${order().map((p) => `<span class="dot ${A(O(g.res)[p]).length >= STOPP_TOTAL ? 'on' : ''}" style="--c:${P[p]?.color}">${P[p]?.avatar}</span>`).join('')}</div>
   </section>`;
 }
 
@@ -509,12 +515,12 @@ const SPIN_MS = 4600;
 function viewWheel() {
   const w = O(S.wheel);
   const done = w.spinId && db.now() - w.at >= SPIN_MS;
-  const canSpin = !w.spinId && (w.for === me || isHost());
+  const canSpin = !w.spinId && w.for === me;
   return `<section class="card center"><h2>Glücksrad</h2>
-    <div class="who">${chip(w.for, 'big')}<span>ist Letzter und dreht</span></div>
+    <div class="who">${chip(w.for, 'big')}<span>hat die Runde verloren und dreht</span></div>
     ${wheelSvg()}
     ${canSpin ? '<button class="btn primary huge" data-act="spin">DREHEN 🎡</button>' : ''}
-    ${!w.spinId && !canSpin ? '<p class="hint">Warte, bis gedreht wird …</p>' : ''}
+    ${!w.spinId && !canSpin ? `<p class="hint">Warte, bis ${esc(nm(w.for))} dreht …</p>` : ''}
     ${done ? `<div class="banner gold big">${C.WHEEL[w.idx]?.e} ${esc(w.text)}</div>` : ''}
   </section>
   ${done ? `<section class="card"><ul class="pen">${A(S.pen).slice(w.penFrom || 0).map(penItem).join('')}</ul></section>` : ''}`;
@@ -590,7 +596,7 @@ function hostBar() {
     }
     case 'result': b = btn('next', 'Strafen ▶'); break;
     case 'penalty': b = btn('next', 'Glücksrad ▶'); break;
-    case 'wheel': b = S.wheel?.spinId ? btn('next', 'Tabelle ▶') : btn('spin', 'Drehen 🎡'); break;
+    case 'wheel': b = btn('next', S.wheel?.spinId ? 'Tabelle ▶' : `Warte auf ${esc(nm(S.wheel?.for))} …`, 'primary', S.wheel?.spinId ? '' : 'disabled'); break;
     case 'table': b = btn('next', S.round < ROUNDS.length - 1 ? 'Nächste Runde ▶' : 'Siegerehrung 🏆'); break;
     case 'tiebreak': b = btn('next', 'Auswerten ▶'); break;
     case 'final': b = btn('restart', 'Neues Turnier', 'ghost'); break;
@@ -598,16 +604,18 @@ function hostBar() {
   return `<nav class="hostbar"><button class="btn ghost icononly" data-act="menu" aria-label="Menü">☰</button>${b}</nav>`;
 }
 
-const DRINK_LABEL = { shot: '🥃 Shot', water: '💧 Wasser', cocktail: '🍸 Cocktail', exen: '🍺 Exen' };
+const DRINK_LABEL = { shot: '🥃 Shot', water: '💧 Wasser', cocktail: '🍸 Cocktail', exen: '🍺 Exen', points: '✏️ Punkte korrigiert' };
 function drinksSheet() {
   if (!L.drinks || !S) return '';
   const st = O(S.stats), log = A(S.log).slice().reverse();
   const rows = order().slice().sort((a, b) => (O(st[b]).shots || 0) - (O(st[a]).shots || 0));
-  const mine = log.filter((x) => x.pid === me);
-  const line = (x) => `<li class="${x.j ? 'jok' : ''}">${chip(x.pid)}<span class="what">${DRINK_LABEL[x.k] || x.k}${x.k === 'cocktail' ? ': ' + esc(x.why) : ''}</span>
-    <span class="why">${x.k === 'cocktail' ? '' : esc(x.why || '')}${x.j ? ` · 🃏 an ${esc(nm(x.j))} weitergegeben` : ''}${x.r >= 0 && ROUNDS[x.r] ? ` · ${esc(ROUNDS[x.r].stage)}` : ''}</span></li>`;
+  const mine = log.filter((x) => x.pid === me && x.k !== 'points');
+  const corr = log.filter((x) => x.k === 'points');
+  const line = (x) => `<li class="${x.j ? 'jok' : ''} ${x.k === 'points' ? 'corr' : ''}">${chip(x.pid)}<span class="what">${DRINK_LABEL[x.k] || x.k}${x.k === 'cocktail' ? ': ' + esc(x.why) : ''}${x.k === 'points' ? `: ${x.d > 0 ? '+' : ''}${x.d}` : ''}</span>
+    <span class="why">${x.k === 'cocktail' ? '' : x.k === 'points' ? 'Begründung: ' + esc(x.why || '') : esc(x.why || '')}${x.j ? ` · 🃏 an ${esc(nm(x.j))} weitergegeben` : ''}${x.r >= 0 && ROUNDS[x.r] ? ` · ${esc(ROUNDS[x.r].stage)}` : ''}</span></li>`;
   return `<div class="overlay" data-act="drinksClose"><div class="sheet" data-stop="1">
     <h2>🍻 Getränke-Bilanz</h2>
+    ${corr.length ? `<div class="banner warn">⚠️ Der Spielleiter hat ${corr.length === 1 ? 'eine Punktekorrektur' : corr.length + ' Punktekorrekturen'} vorgenommen – Details unten im Protokoll.</div>` : ''}
     <div class="menu-drinks">
       <div><b>🥃 Shot</b><span>${esc(C.SHOT)}</span></div>
       <div><b>🍸 Cocktails</b><span>${C.COCKTAILS.map(esc).join(' · ')}</span></div>
@@ -618,9 +626,9 @@ function drinksSheet() {
       ${rows.map((p) => { const x = O(st[p]); return `<tr class="${p === me ? 'mine' : ''}"><td>${chip(p)}</td><td>${x.shots || 0}</td><td>${x.cocktails || 0}</td><td>${x.exen || 0}</td><td>${x.jokers ?? 0}</td></tr>`; }).join('')}
     </tbody></table>
     <p class="hint">🥃 Shots · 🍸 Cocktails · 🍺 Exen · 🃏 übrige Joker</p>
-    <h3>Deine Getränke (${mine.length})</h3>
+    <h3>Deine Getränke (${mine.filter((x) => x.k !== 'points').length})</h3>
     <ul class="drinklog">${mine.map(line).join('') || '<li class="hint">Noch nichts – das ändert sich gleich.</li>'}</ul>
-    <h3>Protokoll aller Getränke (${log.length})</h3>
+    <h3>Protokoll (Getränke & Korrekturen)</h3>
     <ul class="drinklog">${log.map(line).join('') || '<li class="hint">Noch nichts getrunken.</li>'}</ul>
     <button class="btn" data-act="drinksClose">Schliessen</button>
   </div></div>`;
@@ -632,7 +640,11 @@ function hostMenu() {
   return `<div class="overlay" data-act="menuClose"><div class="sheet" data-stop="1">
     <h2>Spielleiter-Menü</h2>
     <h3>Punkte korrigieren</h3>
-    <ul class="list compact">${order().map((p) => `<li>${chip(p)}<span class="stepper"><button data-act="adj" data-pid="${p}" data-d="-1">−</button><b>${sc[p] || 0}</b><button data-act="adj" data-pid="${p}" data-d="1">+</button></span></li>`).join('')}</ul>
+    <ul class="list compact">${order().map((p) => { const d = L.adj[p] || 0; return `<li>${chip(p)}<span class="stepper"><button data-act="adj" data-pid="${p}" data-d="-1">−</button><b>${(sc[p] || 0) + d}</b><button data-act="adj" data-pid="${p}" data-d="1">+</button></span>${d ? `<span class="adjd ${d > 0 ? 'up' : 'down'}">${d > 0 ? '+' : ''}${d}</span>` : ''}</li>`; }).join('')}</ul>
+    ${Object.values(L.adj).some((d) => d) ? `<label for="adjwhy">Begründung (Pflicht)</label>
+      <input id="adjwhy" maxlength="80" placeholder="z.B. Buzzer-Panne bei Frage 7">
+      <div class="row judge"><button class="btn gold" data-act="adjSave">💾 Speichern</button><button class="btn ghost" data-act="adjReset">Verwerfen</button></div>
+      <p class="hint">Erst mit «Speichern» gilt die Korrektur. Sie erscheint für alle in der 🍻-Liste.</p>` : '<p class="hint">Mit − / + anpassen, dann begründen und speichern.</p>'}
     <p class="hint">Raum-Code: <b>${esc(code)}</b> · Spieler können jederzeit mit demselben Namen wieder beitreten.</p>
     <button class="btn danger" data-act="restart">Turnier neu starten</button>
     <button class="btn" data-act="menuClose">Schliessen</button>
@@ -791,8 +803,14 @@ const handlers = {
   endRound: () => { if (confirm('Runde jetzt beenden und auswerten?')) hostCmd('next'); },
   restart: () => { if (confirm('Wirklich ein neues Turnier starten? Alle Punkte werden gelöscht.')) { L.menu = false; hostCmd('restart'); } },
   menu: () => { L.menu = true; render(); },
-  menuClose: () => { L.menu = false; render(); },
-  adj: (d) => hostCmd('adjust', { pid: d.pid, d: d.d }),
+  menuClose: () => { if (Object.values(L.adj).some((d) => d) && !confirm('Ungespeicherte Punktekorrektur verwerfen?')) return; L.menu = false; L.adj = {}; render(); },
+  adj: (d) => { L.adj[d.pid] = (L.adj[d.pid] || 0) + Number(d.d); render(); },
+  adjReset: () => { L.adj = {}; render(); },
+  adjSave: () => {
+    const why = (document.getElementById('adjwhy')?.value || '').trim();
+    if (!why) { alert('Bitte eine Begründung eingeben.'); document.getElementById('adjwhy')?.focus(); return; }
+    hostCmd('adjustSave', { deltas: { ...L.adj }, why }); L.adj = {}; render();
+  },
   est: (d) => {
     const el = document.getElementById('est');
     const v = Number(String(el?.value || '').replace(',', '.'));
@@ -812,7 +830,7 @@ const handlers = {
   jokerOpen: (d) => { L.jokerFor = d.id; render(); },
   jokerCancel: () => { L.jokerFor = null; render(); },
   joker: (d) => { send('joker', { id: d.id, target: d.target }); L.jokerFor = null; render(); },
-  spin: () => { if (isHost()) hostCmd('spin'); else send('spin'); },
+  spin: () => send('spin'),
 };
 
 // Schnelle Knöpfe (Stoppuhr, Buzzer, Bombe) reagieren schon beim Antippen
