@@ -291,3 +291,18 @@ body.shake #app { animation: shake 0.12s 5; }
 .drinklog .what { font-weight: 700; }
 .drinklog .why { width: 100%; font-size: 13px; color: var(--mute); }
 .drinklog li.jok { opacity: 0.55; }
+
+/* Zeit-Stopper: Versuche pro Durchgang */
+.sblocks { display: grid; gap: 8px; margin: 14px 0 4px; text-align: left; }
+.sblock { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; background: var(--card2); border-radius: 12px; padding: 8px 10px; }
+.sblock b { font: 400 20px Anton, sans-serif; width: 44px; }
+.sblock span { padding: 3px 8px; border-radius: 8px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.sblock span small { font-weight: 400; color: var(--mute); }
+.sblock span.best { background: var(--gold); color: var(--navy); }
+.sblock span.best small { color: var(--navy); }
+/* Punktekorrektur */
+.adjd { font-weight: 800; font-size: 14px; padding: 2px 8px; border-radius: 8px; margin-left: 6px; }
+.adjd.up { background: rgba(61, 220, 151, 0.2); color: var(--green); }
+.adjd.down { background: rgba(255, 77, 94, 0.2); color: var(--red); }
+.list li .stepper { margin-left: auto; }
+.drinklog li.corr { background: rgba(255, 201, 60, 0.1); border-radius: 10px; padding: 8px; }
