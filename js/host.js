@@ -1,7 +1,7 @@
 // Spielleiter-Engine: läuft nur auf dem Handy, das den Raum eröffnet hat.
 // Sie ist die einzige Instanz, die den Spielstand (state) schreibt.
 // Alle anderen Handys schicken nur Aktionen (actions).
-import { ROUNDS, STOPP_TARGETS, ptsFor, placesFrom, uid, rnd, ri, pickOne, shuffle, gauss, COLORS, AVATARS, A, O, D, fill } from './shared.js';
+import { ROUNDS, STOPP_TOTAL, stoppTarget, stoppBest, ptsFor, placesFrom, uid, rnd, ri, pickOne, shuffle, gauss, COLORS, AVATARS, A, O, D, fill } from './shared.js';
 import * as C from './content.js';
 
 export class Host {
@@ -108,9 +108,9 @@ export class Host {
       case 'stop':
         if (inGame('stopp')) {
           g.res = O(g.res); const r = A(g.res[a.pid]);
-          if (r.length === a.att && a.att < STOPP_TARGETS.length && isFinite(Number(a.time))) {
+          if (r.length === a.att && a.att < STOPP_TOTAL && isFinite(Number(a.time))) {
             r.push(Number(a.time)); g.res[a.pid] = r;
-            if (S.order.every((p) => A(g.res[p]).length >= STOPP_TARGETS.length)) g.until = Math.min(g.until, n + 2500);
+            if (S.order.every((p) => A(g.res[p]).length >= STOPP_TOTAL)) g.until = Math.min(g.until, n + 2500);
           }
         }
         break;
@@ -178,7 +178,7 @@ export class Host {
         break;
       }
       case 'spin':
-        if (S.phase === 'wheel' && S.wheel && !S.wheel.spinId && (a.pid === S.wheel.for || a.pid === this.me)) this.spin();
+        if (S.phase === 'wheel' && S.wheel && !S.wheel.spinId && a.pid === S.wheel.for) this.spin();
         break;
       case 'tstop':
         if (S.phase === 'tiebreak' && S.tie && A(S.tie.pids).includes(a.pid)) {
@@ -220,9 +220,19 @@ export class Host {
         this.db.set('players/' + pid, { name: nm, avatar: pickOne(AVATARS), color: '', bot: true, joined: n });
         return;
       }
-      case 'adjust':
-        S.scores[arg.pid] = (S.scores[arg.pid] || 0) + Number(arg.d);
+      case 'adjustSave': {
+        const why = String(arg.why || '').trim();
+        const deltas = O(arg.deltas);
+        if (!why) return;
+        for (const [pid, d0] of Object.entries(deltas)) {
+          const d = Number(d0);
+          if (!d || !S.order.includes(pid)) continue;
+          S.scores[pid] = (S.scores[pid] || 0) + d;
+          this.logDrink(pid, 'points', why);
+          S.log[S.log.length - 1].d = d;
+        }
         break;
+      }
       case 'shotLimit':
         S.settings.shotLimit = Math.max(1, Math.min(20, (S.settings.shotLimit || 5) + Number(arg.d)));
         break;
@@ -232,7 +242,6 @@ export class Host {
         S.settings.cats = [...cats];
         break;
       }
-      case 'spin': if (S.phase === 'wheel') this.spin(); return;
       case 'restart': {
         this.S = this.fresh(S);
         for (const pid of this.S.order) { this.S.scores[pid] = 0; this.stat(pid); }
@@ -310,11 +319,11 @@ export class Host {
         S.g = { id: 'schaetz', qs: shuffle(C.SCHAETZ.map((_, i) => i)).slice(0, 8), qi: 0, sub: 'ask', until: n + D(35), ans: {} };
         break;
       case 'stopp':
-        S.g = { id: 'stopp', until: n + D(150), res: {} };
+        S.g = { id: 'stopp', until: n + D(300), res: {} };
         break;
       case 'buzzer':
-        S.endsAt = n + D(420);
-        S.g = { id: 'buzzer', qs: shuffle(C.BUZZER.map((_, i) => i)).slice(0, 15), qi: 0, sub: 'open', until: n + D(15), excl: [], who: null, last: null, pts: {} };
+        S.endsAt = n + D(16 * 45);
+        S.g = { id: 'buzzer', qs: shuffle(C.BUZZER.map((_, i) => i)).slice(0, 16), qi: 0, sub: 'open', until: n + D(30), excl: [], who: null, last: null, pts: {} };
         break;
       case 'zeichnen':
         this.db.remove('draw');
@@ -379,17 +388,17 @@ export class Host {
     if (ok) return this.bzReveal();
     g.excl = [...A(g.excl), pid];
     if (S.order.every((p) => g.excl.includes(p))) return this.bzReveal();
-    g.sub = 'open'; g.until = this.now() + D(12);
+    g.sub = 'open'; g.until = this.now() + D(20);
   }
   bzReveal() { const g = this.S.g; g.sub = 'reveal'; g.who = null; g.until = this.now() + D(4); }
   bzNext() {
     const g = this.S.g; g.qi++;
     if (g.qi >= A(g.qs).length) return this.finishGame();
-    Object.assign(g, { sub: 'open', until: this.now() + D(15), excl: [], who: null, last: null });
+    Object.assign(g, { sub: 'open', until: this.now() + D(30), excl: [], who: null, last: null });
   }
 
   // Pantomime
-  ptTurn() { const g = this.S.g; g.sub = 'turn'; g.until = this.now() + D(45); g.lastHit = null; this.ptTerm(); }
+  ptTurn() { const g = this.S.g; g.sub = 'turn'; g.until = this.now() + D(55); g.lastHit = null; this.ptTerm(); }
   ptTerm() {
     const g = this.S.g;
     const sel = C.ZEICHNEN.filter((c) => this.S.settings.cats.includes(c.id));
@@ -462,9 +471,9 @@ export class Host {
         P.forEach((p) => {
           const r = A(O(g.res)[p]);
           if (r.length) {
-            // nicht gespielte Durchgänge zählen als volle Zielzeit daneben
-            vals[p] = STOPP_TARGETS.reduce((sum, t, i) => sum + (r[i] != null ? Math.abs(r[i] - t) : t), 0);
-            det[p] = `${r.map((t) => t.toFixed(2)).join(' · ')} s · Abw. ${vals[p].toFixed(2)}`;
+            const best = stoppBest(r);
+            vals[p] = best.reduce((sum, b) => sum + b.dev, 0);
+            det[p] = `Beste: ${best.map((b) => (b.best == null ? '–' : b.best.toFixed(2))).join(' · ')} s · Abw. ${vals[p].toFixed(2)}`;
           } else det[p] = 'nicht gestoppt';
         });
         return { vals, hi: false, det };
@@ -654,7 +663,7 @@ export class Host {
           break;
         case 'stopp': {
           const k = A(O(g.res)[pid]).length;
-          if (k < STOPP_TARGETS.length) return { key: `r${r}st${k}`, d: STOPP_TARGETS[k] + rnd(1, 4), fn: () => ({ t: 'stop', att: k, time: +(STOPP_TARGETS[k] + gauss() * 1.3).toFixed(2) }) };
+          if (k < STOPP_TOTAL) return { key: `r${r}st${k}`, d: stoppTarget(k) + rnd(1, 3), fn: () => ({ t: 'stop', att: k, time: +(stoppTarget(k) + gauss() * 1.3).toFixed(2) }) };
           break;
         }
         case 'buzzer': {
