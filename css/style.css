@@ -306,3 +306,5 @@ body.shake #app { animation: shake 0.12s 5; }
 .adjd.down { background: rgba(255, 77, 94, 0.2); color: var(--red); }
 .list li .stepper { margin-left: auto; }
 .drinklog li.corr { background: rgba(255, 201, 60, 0.1); border-radius: 10px; padding: 8px; }
+
+.icon.off { opacity: 0.4; }
