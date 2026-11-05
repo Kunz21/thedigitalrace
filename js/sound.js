@@ -3,6 +3,7 @@ let ctx = null;
 let on = localStorage.getItem('mbg_sound') !== '0';
 
 export const isOn = () => on;
+export const getCtx = () => ctx;
 export function toggle() { on = !on; localStorage.setItem('mbg_sound', on ? '1' : '0'); if (on) unlock(); }
 export function unlock() {
   try {
