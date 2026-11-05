@@ -4,8 +4,8 @@
 import * as SFX from './sound.js';
 
 const TRACKS = [
-  { src: 'assets/music/pixel-derby.mp3', name: 'Pixel-Derby' },
-  { src: 'assets/music/huettengaudi.mp3', name: 'Hüttengaudi' },
+   { src: 'pixel-derby.mp3', name: 'Pixel-Derby' },
+   { src: 'huettengaudi.mp3', name: 'Hüttengaudi' },
 ];
 const KEY = 'mbg_music';
 const BASE = 0.4; // Grundlautstärke im Verhältnis zu den Effekten
