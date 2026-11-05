@@ -4,6 +4,7 @@ import { Host } from './host.js';
 import { ROUNDS, STOPP_TARGETS, STOPP_TRIES, STOPP_TOTAL, stoppTarget, stoppBest, POINTS, AVATARS, COLORS, SPEED, esc, uid, fmtNum, A, O, placesFrom } from './shared.js';
 import * as C from './content.js';
 import * as SFX from './sound.js';
+import * as MUSIC from './music.js';
 import { confetti } from './fx.js';
 
 const app = document.getElementById('app');
@@ -105,12 +106,12 @@ function enterGame(c, pid) {
   db.on('state', (v) => { const prev = S; S = v; stateFx(prev, S); render(); });
   db.on('players', (v) => { P = v || {}; render(); });
   db.on('draw', (v) => { DRAW = v || {}; drawPad(); });
-  db.on('meta', (v) => { META = v; if (META?.host === me && !host) { host = new Host(db, me); host.start(); } render(); });
+  db.on('meta', (v) => { META = v; if (META) MUSIC.setDefault(META.host === me); if (META?.host === me && !host) { host = new Host(db, me); host.start(); } render(); });
   wakeLock();
   render();
 }
 // Debug-Zugriff in der Browser-Konsole: mbg.S, mbg.host
-window.mbg = { get S() { return S; }, get host() { return host; }, get P() { return P; } };
+window.mbg = { get S() { return S; }, get host() { return host; }, get P() { return P; }, music: MUSIC };
 
 // ---------------- Wake Lock (Bildschirm bleibt an) ----------------
 let wl = null;
@@ -135,6 +136,7 @@ function header() {
     <div class="brand"><span class="ball">★</span>${showStage ? '' : `<div><b>Mebongs CL</b><small>${esc(C.SUBTITLE)}</small></div>`}</div>
     ${showStage ? `<span class="stage">${esc(R.stage)}</span>` : ''}
     ${S && S.phase !== 'lobby' ? '<button class="icon" data-act="drinks" aria-label="Getränke">🍻</button>' : ''}
+    <button class="icon ${MUSIC.isOn() ? '' : 'off'}" data-act="music" aria-label="Musik">🎵</button>
     <button class="icon" data-act="sound" aria-label="Ton">${SFX.isOn() ? '🔊' : '🔇'}</button>
     ${mp ? `<span class="me" style="--c:${mp.color}">${mp.avatar}</span>` : ''}
   </header>`;
@@ -191,6 +193,7 @@ function viewLobby() {
       <h3>Einstellungen Spielleiter</h3>
       <div class="row between"><span>Shot-Limit pro Person</span><span class="stepper"><button data-act="limit" data-d="-1">−</button><b>${S.settings?.shotLimit ?? 5}</b><button data-act="limit" data-d="1">+</button></span></div>
       <p class="hint">Ab diesem Wert gibt's statt Shots ein Glas Wasser.</p>
+      <p class="hint">🎵 Die Hintergrundmusik läuft auf deinem Handy – am besten an eine Bluetooth-Box hängen. Bei den anderen ist sie aus, damit nicht alle Handys durcheinander spielen. Ein/aus mit 🎵 oben rechts.</p>
       <label>Kritzel-Kategorien</label>
       <div class="chips">${C.ZEICHNEN.map((c) => `<button class="cchip ${A(S.settings?.cats).includes(c.id) ? 'on' : ''}" data-act="cat" data-id="${c.id}">${esc(c.name)}</button>`).join('')}</div>
       <button class="btn ghost" data-act="bot">🤖 Testspieler hinzufügen</button>
@@ -715,7 +718,7 @@ function afterRender() {
     }
   }
   if (S?.phase === 'final' && S.final && L.fxFinal !== S.final.at && db.now() - S.final.at >= A(S.final.rows).length * REVEAL_MS - REVEAL_MS) {
-    L.fxFinal = S.final.at; confetti(); SFX.fanfare();
+    L.fxFinal = S.final.at; confetti(); SFX.fanfare(); MUSIC.duck(6000, 0.15);
   }
 }
 
@@ -747,32 +750,33 @@ const vib = (p) => { try { navigator.vibrate && navigator.vibrate(p); } catch {}
 function stateFx(a, b) {
   if (!a || !b) return;
   if (a.phase !== b.phase) {
-    if (b.phase === 'intro') SFX.whistle();
+    if (b.phase === 'intro') { SFX.whistle(); MUSIC.duck(1500); }
     if (b.phase === 'result') SFX.jingle();
     L.jokerFor = null; L.menu = L.menu && b.phase === a.phase;
   }
   const ga = O(a.g), gb = O(b.g);
   if (gb.id === 'buzzer') {
-    if (gb.who && gb.who !== ga.who) { SFX.buzz(); vib(80); }
+    if (gb.who && gb.who !== ga.who) { SFX.buzz(); MUSIC.duck(1500); vib(80); }
     if (gb.last?.k && gb.last.k !== ga.last?.k) (gb.last.ok ? SFX.ding : SFX.honk)();
   }
   if (gb.id === 'zeichnen') {
     if (gb.lastHit?.tn && gb.lastHit.tn !== ga.lastHit?.tn) SFX.ding();
     if (gb.lastWrong?.k && gb.lastWrong.k !== ga.lastWrong?.k) SFX.honk();
-    if (A(gb.queue).length > A(ga.queue).length) { SFX.buzz(); vib(60); }
+    if (A(gb.queue).length > A(ga.queue).length) { SFX.buzz(); MUSIC.duck(1500); vib(60); }
     if (gb.tn !== ga.tn) padStroke = null;
   }
   if (gb.id === 'schaetz' && gb.sub === 'reveal' && ga.sub !== 'reveal') SFX.jingle();
   if (gb.id === 'bombe' && gb.boom?.at && gb.boom.at !== ga.boom?.at) {
-    SFX.boom(); vib([250, 80, 400]);
+    SFX.boom(); MUSIC.duck(3500, 0.15); vib([250, 80, 400]);
     document.body.classList.add('shake'); setTimeout(() => document.body.classList.remove('shake'), 700);
   }
-  if (b.wheel?.spinId && b.wheel.spinId !== a.wheel?.spinId) SFX.spin();
+  if (b.wheel?.spinId && b.wheel.spinId !== a.wheel?.spinId) { SFX.spin(); MUSIC.duck(5500); }
 }
 
 // ---------------- Eingaben ----------------
 const handlers = {
   sound: () => { SFX.toggle(); lastHtml = ''; render(); },
+  music: () => { MUSIC.toggle(); lastHtml = ''; render(); },
   home: () => { screen = 'home'; L.err = ''; render(); },
   goCreate: () => { L.mode = 'create'; goProfile(); },
   goJoin: () => {
@@ -851,6 +855,7 @@ const fast = {
 
 app.addEventListener('pointerdown', (e) => {
   SFX.unlock();
+  MUSIC.kick();
   const el = e.target.closest('[data-fast]');
   if (el && !el.disabled) { e.preventDefault(); fast[el.dataset.fast]?.(el.dataset); }
 });
