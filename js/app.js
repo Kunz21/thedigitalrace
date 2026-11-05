@@ -495,6 +495,7 @@ function penItem(it) {
 
 function viewPenalty() {
   return `<section class="card"><h2>Strafen & Belohnungen</h2>
+    ${S.loseSay ? `<div class="banner bad big">${esc(S.loseSay)}</div>` : ''}
     <ul class="pen">${A(S.pen).map(penItem).join('') || '<li class="pi">Keine Strafen – unglaublich.</li>'}</ul>
     <p class="hint">Prost! Wer einen Joker hat, kann einen Shot weitergeben.</p></section>`;
 }
