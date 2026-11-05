@@ -529,6 +529,7 @@ export class Host {
       S.pen.push({ id: uid(), type: 'give', pid: p, target: null });
     });
     if (R.id !== 'bombe' && worst !== best) lose.forEach((p) => this.addShot(p, 'Rundenletzter'));
+    S.loseSay = worst !== best && lose.length ? this.say('roundLose', { n: lose.map((p) => this.name(p)).join(' & ') }) : '';
     S.winners = win; S.losers = lose;
     S.phase = 'penalty';
     this.commit();
@@ -625,7 +626,7 @@ export class Host {
       rows: sorted.map((p, i) => ({ pid: p, place: places[i], score: S.scores[p] || 0 })),
       at: n,
       champ: this.say('champion', { n: this.name(champ) }),
-      loser: this.say('loser', { n: this.name(loser) }),
+      loser: this.say('loser', { n: this.name(loser), p: places[places.length - 1] }),
     };
     S.phase = 'final'; S.endsAt = null;
     this.commit();
