@@ -29,6 +29,7 @@ export class Host {
       phase: 'lobby', round: -1, endsAt: null,
       order: keep?.order || [], scores: {}, stats: {}, pen: [], hist: [], log: [],
       settings: keep?.settings || { shotLimit: 5, cats: C.ZEICHNEN.map((c) => c.id) },
+      deck: keep?.deck || {}, seen: keep?.seen || {}, // bleibt bei «Neues Turnier» erhalten
       g: null, res: null, wheel: null, table: null, tie: null, final: null, v: 0,
     };
   }
@@ -38,6 +39,7 @@ export class Host {
     s = { ...f, ...s };
     s.order = A(s.order); s.scores = O(s.scores); s.stats = O(s.stats); s.pen = A(s.pen); s.hist = A(s.hist); s.log = A(s.log);
     s.settings = { ...f.settings, ...O(s.settings) }; s.settings.cats = A(s.settings.cats);
+    s.deck = O(s.deck); s.seen = O(s.seen);
     return s;
   }
 
@@ -51,7 +53,37 @@ export class Host {
     });
   }
 
-  say(key, vars) { return fill(pickOne(C.SAY[key]), vars); }
+  say(key, vars) {
+    const pool = C.SAY[key];
+    if (!Array.isArray(pool)) return fill(pool, vars);
+    const S = this.S; S.deck = O(S.deck);
+    const usedT = new Set(A(S.deck[key + '_t'])); // in diesem Turnier schon gezeigt
+    let left = A(S.deck[key]).filter((i) => i < pool.length && !usedT.has(i));
+    if (!left.length) {
+      const all = pool.map((_, i) => i);
+      left = shuffle(all.filter((i) => !usedT.has(i)));
+      if (!left.length) left = shuffle(all); // Pool zu klein für dieses Turnier: dann halt von vorne
+      const last = S.deck[key + '_last'];
+      if (left.length > 1 && left[0] === last) left.push(left.shift()); // nie zweimal direkt hintereinander
+    }
+    const i = left.shift();
+    S.deck[key] = left; S.deck[key + '_last'] = i; S.deck[key + '_t'] = [...usedT, i];
+    return fill(pool[i], vars);
+  }
+
+  // Zieht n Einträge, zuerst die, die in früheren Turnieren noch nicht dran waren
+  pickFresh(key, size, n) {
+    const S = this.S; S.seen = O(S.seen);
+    const all = Array.from({ length: size }, (_, i) => i);
+    const seen = new Set(A(S.seen[key]).filter((i) => i < size));
+    let pick = shuffle(all.filter((i) => !seen.has(i))).slice(0, n);
+    if (pick.length < n) {
+      pick = pick.concat(shuffle(all.filter((i) => !pick.includes(i))).slice(0, n - pick.length));
+      S.seen[key] = pick.slice(); // alle durch: neue Runde beginnt mit diesen
+    } else S.seen[key] = [...seen, ...pick];
+    return pick;
+  }
+  markSeen(key, item) { const S = this.S; S.seen = O(S.seen); S.seen[key] = [...A(S.seen[key]).filter((x) => x !== item), item]; }
   logDrink(pid, k, why, id = null) { this.S.log.push({ id: id || uid(), pid, k, why, r: this.S.round, at: this.now() }); }
 
   stat(pid) {
@@ -102,6 +134,7 @@ export class Host {
         if (inGame('schaetz') && g.sub === 'ask' && a.q === g.qi && isFinite(Number(a.v))) {
           const k = 'q' + g.qi; g.ans = O(g.ans); g.ans[k] = O(g.ans[k]);
           g.ans[k][a.pid] = Number(a.v);
+          g.at = O(g.at); g.at[k] = O(g.at[k]); g.at[k][a.pid] = n;
           if (S.order.every((p) => g.ans[k][p] != null)) this.scReveal();
         }
         break;
@@ -260,6 +293,7 @@ export class Host {
         if (S.order.length < 2) return;
         S.phase = 'rules'; S.endsAt = n + D(300);
         S.hist = []; S.scores = {}; S.stats = {};
+        S.deck = O(S.deck); Object.keys(S.deck).filter((k) => k.endsWith('_t')).forEach((k) => delete S.deck[k]); // neues Turnier
         for (const pid of S.order) { S.scores[pid] = 0; this.stat(pid); }
         break;
       case 'rules': return this.intro(0);
@@ -316,14 +350,14 @@ export class Host {
     S.phase = 'play'; S.endsAt = null;
     switch (R.id) {
       case 'schaetz':
-        S.g = { id: 'schaetz', qs: shuffle(C.SCHAETZ.map((_, i) => i)).slice(0, 8), qi: 0, sub: 'ask', until: n + D(35), ans: {} };
+        S.g = { id: 'schaetz', qs: this.pickFresh('schaetz', C.SCHAETZ.length, 12), qi: 0, sub: 'ask', until: n + D(35), ans: {}, at: {} };
         break;
       case 'stopp':
         S.g = { id: 'stopp', until: n + D(300), res: {} };
         break;
       case 'buzzer':
         S.endsAt = n + D(16 * 45);
-        S.g = { id: 'buzzer', qs: shuffle(C.BUZZER.map((_, i) => i)).slice(0, 16), qi: 0, sub: 'open', until: n + D(30), excl: [], who: null, last: null, pts: {} };
+        S.g = { id: 'buzzer', qs: this.pickFresh('buzzer', C.BUZZER.length, 16), qi: 0, sub: 'open', until: n + D(30), excl: [], who: null, last: null, pts: {} };
         break;
       case 'zeichnen':
         this.db.remove('draw');
@@ -359,11 +393,23 @@ export class Host {
 
   // Schätzmeister
   scReveal() {
-    const g = this.S.g, q = C.SCHAETZ[g.qs[g.qi]], ans = O(O(g.ans)['q' + g.qi]);
-    let best = null;
-    for (const p of this.S.order) if (ans[p] != null && (best == null || Math.abs(ans[p] - q.a) < Math.abs(ans[best] - q.a))) best = p;
+    const g = this.S.g;
+    const pl = this.scPlaces(g.qi);
+    const best = this.S.order.filter((p) => O(O(g.ans)['q' + g.qi])[p] != null).sort((a, b) => pl[a] - pl[b])[0] || null;
     g.say = best ? this.say('schaetzBest', { n: this.name(best) }) : '';
     g.sub = 'reveal'; g.until = this.now() + D(10);
+  }
+  // Plätze einer Schätzfrage: kleinere Abweichung zuerst, bei Gleichstand wer früher getippt hat
+  scPlaces(i) {
+    const g = this.S.g, P = this.S.order, q = C.SCHAETZ[A(g.qs)[i]];
+    const ans = O(O(g.ans)['q' + i]), at = O(O(g.at)['q' + i]);
+    const ok = P.filter((p) => ans[p] != null && isFinite(ans[p]));
+    const key = (p) => [Math.abs(ans[p] - q.a), at[p] ?? Infinity];
+    const better = (x, y) => { const a = key(x), b = key(y); return a[0] < b[0] - 1e-9 || (Math.abs(a[0] - b[0]) <= 1e-9 && a[1] < b[1]); };
+    const out = {};
+    ok.forEach((p) => { out[p] = 1 + ok.filter((o) => better(o, p)).length; });
+    P.forEach((p) => { if (!(p in out)) out[p] = ok.length + 1; });
+    return out;
   }
   scNext() {
     const g = this.S.g; g.qi++;
@@ -407,7 +453,11 @@ export class Host {
     const collect = () => pool.forEach((c) => c.terms.forEach((t, i) => { const k = c.id + ':' + i; if (!used.includes(k)) opts.push({ c, t, k }); }));
     collect();
     if (!opts.length) { used = []; collect(); }
-    const o = pickOne(opts);
+    const seenDraw = new Set(A(this.S.seen?.draw));
+    const fresh = opts.filter((x) => !seenDraw.has(x.k));
+    const o = pickOne(fresh.length ? fresh : opts);
+    this.markSeen('draw', o.k);
+    if (!fresh.length) this.S.seen.draw = [o.k]; // alle Begriffe durch: von vorne
     g.used = [...used, o.k]; g.term = o.t; g.cat = o.c.name; g.tn = (g.tn || 0) + 1;
     g.queue = []; g.wrong = []; g.lastWrong = null;
     this.db.remove('draw');
@@ -430,7 +480,11 @@ export class Host {
   boLive() {
     const g = this.S.g, n = this.now();
     const free = C.BOMB.filter((c) => !A(g.usedCats).includes(c));
-    g.cat = pickOne(free.length ? free : C.BOMB);
+    const seenB = new Set(A(this.S.seen?.bomb));
+    const fresh = free.filter((c) => !seenB.has(c));
+    g.cat = pickOne(fresh.length ? fresh : free.length ? free : C.BOMB);
+    if (!fresh.length) this.S.seen.bomb = [];
+    this.markSeen('bomb', g.cat);
     g.usedCats = [...A(g.usedCats), g.cat];
     if (!A(g.alive).includes(g.holder)) g.holder = pickOne(A(g.alive));
     Object.assign(g, { sub: 'live', started: n, fuse: n + D(rnd(15, 45)), passes: 0, until: null });
@@ -459,9 +513,7 @@ export class Host {
         const plc = {}; P.forEach((p) => { vals[p] = 0; plc[p] = []; });
         A(g.qs).forEach((qidx, i) => {
           if (i > g.qi) return;
-          const q = C.SCHAETZ[qidx], ans = O(O(g.ans)['q' + i]), diffs = {};
-          P.forEach((p) => { if (ans[p] != null) diffs[p] = Math.abs(ans[p] - q.a); });
-          const pl = placesFrom(P, diffs, false);
+          const pl = this.scPlaces(i);
           P.forEach((p) => { vals[p] += pl[p]; plc[p].push(pl[p]); });
         });
         P.forEach((p) => { det[p] = 'Plätze ' + plc[p].join(' · '); });
@@ -529,7 +581,7 @@ export class Host {
       S.pen.push({ id: uid(), type: 'give', pid: p, target: null });
     });
     if (R.id !== 'bombe' && worst !== best) lose.forEach((p) => this.addShot(p, 'Rundenletzter'));
-    S.loseSay = worst !== best && lose.length ? this.say('roundLose', { n: lose.map((p) => this.name(p)).join(' & ') }) : '';
+    S.loseSay = R.id !== 'bombe' && worst !== best && lose.length ? this.say('roundLose', { n: lose.map((p) => this.name(p)).join(' & ') }) : '';
     S.winners = win; S.losers = lose;
     S.phase = 'penalty';
     this.commit();
@@ -569,16 +621,16 @@ export class Host {
     const lines = [];
     const sorted = P.slice().sort((a, b) => now[a] - now[b]);
     const first = sorted[0], last = sorted[sorted.length - 1];
-    if (first) lines.push(fill(pickOne(C.SAY.leader), { n: this.name(first) }));
+    if (first) lines.push(this.say('leader', { n: this.name(first) }));
     let up = null, down = null;
     P.forEach((p) => {
       const d = (prev[p] || now[p]) - now[p];
       if (d >= 2 && (!up || d > up.d)) up = { p, d };
       if (d <= -2 && (!down || d < down.d)) down = { p, d };
     });
-    if (S.round > 0 && up) lines.push(fill(pickOne(C.SAY.climb), { n: this.name(up.p), d: up.d }));
-    if (S.round > 0 && down && down.p !== last) lines.push(fill(pickOne(C.SAY.fall), { n: this.name(down.p), d: -down.d }));
-    if (last && last !== first) lines.push(fill(pickOne(C.SAY.last), { n: this.name(last), p: now[last] }));
+    if (S.round > 0 && up) lines.push(this.say('climb', { n: this.name(up.p), d: up.d }));
+    if (S.round > 0 && down && down.p !== last) lines.push(this.say('fall', { n: this.name(down.p), d: -down.d }));
+    if (last && last !== first) lines.push(this.say('last', { n: this.name(last), p: now[last] }));
     S.table = { prev, lines };
     S.phase = 'table';
     this.commit();
