@@ -266,13 +266,15 @@ function viewSchaetz(g) {
       <div class="answered">${order().map((p) => `<span class="dot ${ans[p] != null ? 'on' : ''}" style="--c:${P[p]?.color}">${P[p]?.avatar}</span>`).join('')}</div>
     </section>`;
   }
-  const rows = order().map((p) => ({ p, v: ans[p], d: ans[p] == null ? Infinity : Math.abs(ans[p] - q.a) })).sort((a, b) => a.d - b.d);
+  const at = O(O(g.at)['q' + g.qi]);
+  const rows = order().map((p) => ({ p, v: ans[p], t: at[p] ?? Infinity, d: ans[p] == null ? Infinity : Math.abs(ans[p] - q.a) })).sort((a, b) => a.d - b.d || a.t - b.t);
+  const tie = (r, i) => i > 0 && isFinite(r.d) && Math.abs(r.d - rows[i - 1].d) < 1e-9;
   return `<section class="card game">${head}
     <h2 class="question small">${esc(q.q)}</h2>
     <div class="answer"><span>Lösung</span><b>${fmtNum(q.a)} ${esc(q.u)}</b></div>
     <p class="note">${esc(q.n)}</p>
     ${g.say ? `<div class="banner gold">${esc(g.say)}</div>` : ''}
-    <ol class="list">${rows.map((r, i) => `<li class="${i === 0 ? 'best' : ''}">${chip(r.p)}<span class="val">${r.v == null ? '–' : fmtNum(r.v)}</span></li>`).join('')}</ol>
+    <ol class="list">${rows.map((r, i) => `<li class="${i === 0 ? 'best' : ''}">${chip(r.p)}${tie(r, i) || (rows[i + 1] && tie(rows[i + 1], i + 1)) ? `<span class="tag">${tie(r, i) ? 'langsamer' : '⚡ schneller'}</span>` : ''}<span class="val">${r.v == null ? '–' : fmtNum(r.v)}</span></li>`).join('')}</ol>
   </section>`;
 }
 
