@@ -13,7 +13,7 @@ export const COCKTAILS = ['Espresso Martini', 'Basil Smash'];
 // ------------------------------------------------------------
 //  RUNDE 1 – SCHÄTZMEISTER
 //  q = Frage, a = Lösung (Zahl), u = Einheit, n = Hinweis bei der Auflösung
-//  Pro Spiel werden 8 Fragen zufällig gezogen.
+//  Pro Spiel werden 12 Fragen gezogen – zuerst die, die noch nicht dran waren.
 //  Die Werte sind Richtwerte aus Studien bzw. gängigen Angaben.
 // ------------------------------------------------------------
 export const SCHAETZ = [
@@ -48,12 +48,21 @@ export const SCHAETZ = [
   { q: 'Wie hoch ist der Henkelpott?', a: 73.5, u: 'cm', n: '73,5 cm – also gut fünfmal so lang wie der Durchschnitt im Hosenbereich.' },
   { q: 'Wie viele Millionen Euro bezahlte PSG 2017 für Neymar?', a: 222, u: 'Mio. Euro', n: '222 Millionen – bis heute Rekord. Dafür hat er viel gelegen.' },
   { q: 'Wie viele Kilometer läuft ein Profi-Fussballer pro Spiel im Schnitt?', a: 11, u: 'km', n: 'Rund 10 bis 12 km. Ihr schafft heute knapp den Weg zur Bar.' },
+  { q: 'Wie oft pro Jahr haben Schweizer laut der Durex-Umfrage 2005 Sex?', a: 103, u: 'Mal', n: 'Weltweiter Schnitt ebenfalls 103. Also zweimal pro Woche – theoretisch.' },
+  { q: 'Wie viele Sexualpartner hat ein Mensch laut Durex-Umfrage im Leben durchschnittlich?', a: 9, u: 'Partner', n: 'Weltweiter Schnitt 2005. Bei manchen hier am Tisch eher Wunschdenken.' },
+  { q: 'In welchem Alter haben Jugendliche in der Schweiz im Schnitt das erste Mal Sex?', a: 17, u: 'Jahre', n: 'Schweizer Studien: rund 17. Ein paar von euch waren wohl Spätzünder.' },
+  { q: 'Wie viele Stellungen beschreibt das Kamasutra?', a: 64, u: 'Stellungen', n: 'Die meisten hier kennen davon zwei.' },
+  { q: 'Wie viele Millimeter pro Minute schwimmt ein Spermium?', a: 3, u: 'mm/Minute', n: 'Rund 1 bis 4 mm. Gemütlich wie ein Sonntagsspaziergang.' },
+  { q: 'Mit wie vielen km/h tritt ein Samenerguss ungefähr aus?', a: 45, u: 'km/h', n: 'Oft zitierte Angabe. Schneller als ein Velo in der Stadt.' },
+  { q: 'Wie lang ist der Penis eines afrikanischen Elefanten?', a: 1.5, u: 'Meter', n: 'Gängige Angabe: rund 1,5 m.' },
+  { q: 'Wie alt wurde Playboy-Gründer Hugh Hefner?', a: 91, u: 'Jahre', n: '1926 bis 2017. Im Pyjama bis zum Schluss.' },
+  { q: 'In welchem Jahr erschien die erste Playboy-Ausgabe?', a: 1953, u: '', n: 'Mit Marilyn Monroe auf dem Titel.' },
 ];
 
 // ------------------------------------------------------------
 //  RUNDE 3 – BUZZER-CHAOS
 //  q = Frage, o = 4 Antworten, c = Index der richtigen Antwort (0–3)
-//  Pro Spiel werden 15 Fragen zufällig gezogen.
+//  Pro Spiel werden 16 Fragen gezogen – zuerst die, die noch nicht dran waren.
 // ------------------------------------------------------------
 export const BUZZER = [
   { q: 'Welcher Klub hat die Königsklasse am häufigsten gewonnen?', o: ['AC Milan', 'Bayern München', 'Real Madrid', 'Liverpool'], c: 2 },
@@ -223,6 +232,13 @@ export const SAY = {
     '{n} konnte nicht rechtzeitig loslassen.',
     '{n} wollte den Höhepunkt rauszögern. Hat nicht geklappt.',
     '{n} geht hoch wie ein Teenager beim ersten Mal.',
+    '{n} hat\'s nicht mehr halten können. Typisch.',
+    'Bumm! {n} ist geplatzt – wie sein letztes Date.',
+    '{n} kommt zu früh – diesmal mit Knall.',
+    'Explosion bei {n}. Wer zögert, verliert.',
+    '{n} hat zu lange gefummelt.',
+    '{n} geht in die Luft. Mal ehrlich: Das hat jeder kommen sehen.',
+    '{n} hat die Bombe heiss gemacht – und sich verbrannt.',
   ],
   buzzWrong: [
     '{n} drückt schneller als er denkt.',
@@ -230,18 +246,54 @@ export const SAY = {
     '{n} war zu früh dran – Klassiker.',
     '{n} hat zu früh abgedrückt.',
     '{n}: Grosse Klappe, nichts dahinter.',
+    '{n} drückt, bevor das Hirn hochgefahren ist.',
+    '{n}: schnell gedrückt, schnell blamiert.',
+    'Falsch, {n}! Zu früh gekommen – wieder mal.',
+    '{n} hatte den Finger schneller als die Antwort.',
+    '{n}, du Lutscher! Erst denken, dann drücken.',
+    '{n} drückt mit voller Überzeugung auf die falsche Antwort. Respekt.',
+    'Minuspunkt für {n}. Der Buzzer lacht dich aus.',
+    '{n}, du Taugenichts – das war nicht mal knapp.',
+    'Falsch! {n}, nächstes Mal erst das Hirn einschalten.',
+    '{n}, du Hund! Zu gierig, zu falsch.',
+    'Peinlich, {n}. Das hätte sogar der Kellner gewusst.',
+    '{n} buzzert im Blindflug. Bruchlandung.',
+    '{n} rät wild drauflos – wie beim ersten Date.',
+    'Minus eins, {n}. Schnell sein ist nicht alles, frag deine Freundin.',
+    '{n}, du Loooser – dein Finger war klüger als du. Leider nicht viel.',
   ],
   drawHit: [
     '{g} erkennt «{t}» sofort – so was hat er wohl öfter vor Augen.',
     '{g} hat «{t}» erraten. Schmutzige Fantasie zahlt sich aus.',
     '«{t}»! {g} weiss genau, wie das aussieht.',
     '{g} errät «{t}». Kenner unter sich.',
+    '«{t}»! {g} hat das schon mal in echt gesehen – fragt lieber nicht, wo.',
+    'Treffer! {g} sieht in jedem Strich was Versautes – diesmal passt\'s: «{t}».',
+    '{g} knackt «{t}». Picasso wäre stolz, deine Mutter eher nicht.',
+    '{g} errät «{t}». Endlich bringt dir dein Pornokonsum mal was.',
+    '{g} sieht «{t}» und kriegt glänzende Augen.',
+    'Volltreffer {g}: «{t}». Der Zeichner hat Talent, der Rater Erfahrung.',
+    '{g} holt sich «{t}». Hände über die Decke, bitte.',
+    '«{t}»! {g}, du kleiner Schmutzfink.',
+    '{g} erkennt «{t}». Das Gekritzel sah verdächtig nach was anderem aus.',
+    '«{t}» – {g} liest den Stift wie einen Liebesbrief.',
   ],
   schaetzBest: [
     '{n} schätzt am genausten – der misst wohl öfter nach.',
     '{n} hat Augenmass. Übt wohl jeden Morgen vor dem Spiegel.',
     '{n} liegt am nächsten dran. Erfahrungswert, vermutlich.',
     'Volltreffer von {n}. Woher weiss der das so genau?',
+    'Augenmass-Champion {n}. Misst wohl öfter mal nach.',
+    'Bester Tipp: {n}. Der hat das wohl schon selbst ausprobiert.',
+    '{n} schätzt wie ein Profi. Fragt lieber nicht, in welcher Branche.',
+    '{n} landet am nächsten. Der Rest schätzt wie Jungfrauen.',
+    'Fast ein Volltreffer von {n}. Hat er heimlich mitgezählt?',
+    '{n} liegt vorne. Wissen ist Macht – schmutziges Wissen erst recht.',
+    '{n} schätzt am genausten. Der Rest liegt so daneben wie im Bett.',
+    '{n} kennt die Zahl fast genau. Verdächtig, sehr verdächtig.',
+    'Bester Schätzer: {n}. Ein Mann der Zahlen – und der Ferkeleien.',
+    'Treffsicher: {n}. Wenigstens irgendwo trifft er heute.',
+    '{n} schätzt top. Die anderen sollten mal öfter nachzählen.',
   ],
   champion: [
     '{n}, der ultimative Winnertyp – Henkelpott, Cocktail, Krone!',
