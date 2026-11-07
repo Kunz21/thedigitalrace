@@ -6,7 +6,7 @@ export const D = (sec) => (sec * 1000) / SPEED;
 
 export const ROUNDS = [
   { id: 'schaetz', stage: 'Gruppenphase', after: 'nach der Gruppenphase', name: 'Schätzmeister', icon: '🧮',
-    rules: ['8 Schätzfragen – jeder tippt seine Zahl ins Handy.', 'Wer am nächsten dran ist, holt am meisten.', '35 Sekunden pro Frage, dann kommt die Auflösung.'] },
+    rules: ['12 Schätzfragen – jeder tippt seine Zahl ins Handy.', 'Wer am nächsten dran ist, holt am meisten. Bei gleicher Abweichung gewinnt, wer schneller getippt hat.', '35 Sekunden pro Frage, dann kommt die Auflösung.'] },
   { id: 'stopp', stage: 'Achtelfinal', after: 'nach dem Achtelfinal', name: 'Zeit-Stopper', icon: '⏱️',
     rules: ['3 Durchgänge: 10, 15 und 20 Sekunden – pro Durchgang hast du 3 Versuche.', 'START drücken – nach 3 Sekunden verschwindet die Uhr. STOPP drücken, wenn du glaubst, die Zeit ist um.', 'Pro Durchgang zählt dein bester Versuch. Die kleinste Gesamtabweichung gewinnt.'] },
   { id: 'buzzer', stage: 'Viertelfinal', after: 'nach dem Viertelfinal', name: 'Buzzer-Chaos', icon: '🚨',
